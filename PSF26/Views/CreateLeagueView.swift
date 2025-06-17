@@ -4,6 +4,8 @@ struct CreateLeagueView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var alertMessage = ""
     @State private var showingAlert = false
+    @State private var showingModeSelection = false
+    @State private var showingTeamSelection = false
     
     var body: some View {
         NavigationStack {
@@ -14,8 +16,14 @@ struct CreateLeagueView: View {
                         // Header
                         headerSection
                         
-                        // League Options
-                        leagueOptionsSection
+                        if showingTeamSelection {
+                            // Team selection will be handled by navigation
+                            EmptyView()
+                        } else if showingModeSelection {
+                            modeSelectionSection
+                        } else {
+                            leagueOptionsSection
+                        }
                         
                         Spacer(minLength: 50)
                     }
@@ -27,10 +35,22 @@ struct CreateLeagueView: View {
             }
             .navigationTitle("Create League")
             .navigationBarTitleDisplayMode(.large)
+            .navigationDestination(isPresented: $showingTeamSelection) {
+                TeamSelectionView()
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Cancel") {
                         dismiss()
+                    }
+                }
+                if showingModeSelection {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Back") {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showingModeSelection = false
+                            }
+                        }
                     }
                 }
             }
@@ -45,23 +65,154 @@ struct CreateLeagueView: View {
     // MARK: - Header Section
     private var headerSection: some View {
         VStack(spacing: 12) {
-            Image(systemName: "plus.circle.fill")
+            Image(systemName: showingModeSelection ? "person.2.fill" : "plus.circle.fill")
                 .font(.system(size: 40))
                 .foregroundColor(.blue)
                 .symbolEffect(.bounce, options: .speed(0.3).repeat(.continuous))
             
-            Text("Create New League")
+            Text(showingModeSelection ? "Choose Your Role" : "Create New League")
                 .font(.title2)
                 .fontWeight(.bold)
                 .foregroundColor(.primary)
             
-            Text("Choose how to start your football journey")
+            Text(showingModeSelection ? "Select how you want to manage your league" : "Choose how to start your football journey")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
         .padding()
         .frame(maxWidth: .infinity)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private var modeSelectionSection: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Image(systemName: "person.2.fill")
+                    .foregroundColor(.blue)
+                    .symbolEffect(.bounce, options: .repeat(.continuous))
+                Text("Management Mode")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+            .padding(.horizontal)
+            
+            VStack(spacing: 12) {
+                // Owner Mode Button (Active)
+                ownerModeOption
+                
+                // Commissioner Mode Button (Grayed Out)
+                commissionerModeOption
+            }
+        }
+        .padding()
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+    
+    private var ownerModeOption: some View {
+        Button {
+            createOwnerModeLeague()
+        } label: {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(.green)
+                        .shadow(color: .black.opacity(0.3), radius: 2, x: 1, y: 1)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Owner Mode")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+                        
+                        Text("Control one team as owner")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.green)
+                }
+                
+                HStack(spacing: 16) {
+                    featureItem("Pick Team", "hand.point.up.fill")
+                    featureItem("Manage Roster", "person.3.fill")
+                    featureItem("Make Trades", "arrow.left.arrow.right")
+                }
+                .padding(.top, 8)
+            }
+            .padding()
+            .background(
+                LinearGradient(
+                    colors: [.green.opacity(0.1), .blue.opacity(0.1)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                ),
+                in: RoundedRectangle(cornerRadius: 12)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(.green.opacity(0.3), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private var commissionerModeOption: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "crown.fill")
+                    .font(.system(size: 40))
+                    .foregroundColor(.secondary)
+                    .shadow(color: .black.opacity(0.3), radius: 2, x: 1, y: 1)
+                    .grayscale(1.0)
+                    .opacity(0.6)
+                
+                VStack(alignment: .center, spacing: 4) {
+                    Text("Commissioner Mode")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    
+                    Text("Control all teams and settings")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                
+                VStack(spacing: 4) {
+                    Text("Coming Soon")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.orange)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.orange.opacity(0.2), in: RoundedRectangle(cornerRadius: 6))
+                }
+            }
+            
+            HStack(spacing: 16) {
+                featureItem("All Teams", "building.2.fill", isDisabled: true)
+                featureItem("League Settings", "gearshape.fill", isDisabled: true)
+                featureItem("Full Control", "crown.fill", isDisabled: true)
+            }
+            .padding(.top, 8)
+        }
+        .padding()
+        .background(
+            Color.secondary.opacity(0.1),
+            in: RoundedRectangle(cornerRadius: 12)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(.secondary.opacity(0.3), lineWidth: 1)
+        )
     }
     
     // MARK: - League Options Section
@@ -92,7 +243,9 @@ struct CreateLeagueView: View {
     
     private var defaultLeagueOption: some View {
         Button {
-            createDefaultLeague()
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showingModeSelection = true
+            }
         } label: {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
@@ -214,15 +367,8 @@ struct CreateLeagueView: View {
     
     // MARK: - Actions
     
-    private func createDefaultLeague() {
-        // TODO: Implement default league creation
-        alertMessage = "Creating default league with 32 NFL teams..."
-        showingAlert = true
-        
-        // Simulate creation delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            dismiss()
-        }
+    private func createOwnerModeLeague() {
+        showingTeamSelection = true
     }
 }
 
