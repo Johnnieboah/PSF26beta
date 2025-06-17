@@ -116,9 +116,6 @@ class GameCenterManager: NSObject, ObservableObject {
         }
     }
     
-    // Note: presentViewController method removed as it's no longer needed in iOS 26
-    // The new Games app handles UI presentation automatically
-    
     // MARK: - Data Loading
     private func loadGameCenterData() async {
         await withTaskGroup(of: Void.self) { group in
@@ -164,26 +161,23 @@ class GameCenterManager: NSObject, ObservableObject {
         }
     }
     
-    /// Get leaderboard scores
-    func getLeaderboardScores(for leaderboardID: LeaderboardIDs, timeScope: GKLeaderboard.TimeScope = .allTime) async -> [GKLeaderboard.Entry] {
-        guard isAuthenticated else { return [] }
-        
-        do {
-            let leaderboard = try await GKLeaderboard.loadLeaderboards(IDs: [leaderboardID.rawValue]).first
-            guard let leaderboard = leaderboard else { return [] }
-            
-            let (localPlayerEntry, regularEntries, _) = try await leaderboard.loadEntries(for: .global, timeScope: timeScope, range: NSRange(location: 1, length: 25))
-            
-            var allEntries = regularEntries
-            if let localEntry = localPlayerEntry {
-                allEntries.insert(localEntry, at: 0)
-            }
-            
-            return allEntries
-        } catch {
-            print("❌ Failed to load leaderboard scores: \(error)")
-            return []
+    /// Test Game Center integration with simple score and achievement
+    func testGameCenter() async {
+        guard isAuthenticated else {
+            print("❌ Not authenticated with Game Center")
+            return
         }
+        
+        print("🧪 Testing Game Center integration...")
+        
+        // Submit a test score
+        let testScore = Int.random(in: 1...100)
+        await submitScore(testScore, to: .test)
+        
+        // Report test achievement
+        await reportAchievement(.test, percentComplete: 100.0)
+        
+        print("✅ Game Center test completed!")
     }
     
     // MARK: - Achievements
@@ -220,21 +214,6 @@ class GameCenterManager: NSObject, ObservableObject {
         }
     }
     
-    /// Reset all achievements (for testing)
-    func resetAchievements() async {
-        guard isAuthenticated else { return }
-        
-        do {
-            try await GKAchievement.resetAchievements()
-            await loadAchievements()
-            print("✅ All achievements reset")
-        } catch {
-            print("❌ Failed to reset achievements: \(error)")
-        }
-    }
-    
-    // MARK: - Friends & Social
-    
     /// Load player's friends
     private func loadFriends() async {
         guard isAuthenticated else { return }
@@ -249,118 +228,7 @@ class GameCenterManager: NSObject, ObservableObject {
             print("❌ Failed to load friends: \(error)")
         }
     }
-    
-    // MARK: - UI Presentation
-    
-    /// Present Game Center dashboard (iOS 26 compatible)
-    func presentGameCenterDashboard() {
-        guard isAuthenticated else {
-            print("⚠️ Cannot present dashboard: not authenticated")
-            return
-        }
-        
-        // iOS 26: Use the new Games app instead of deprecated GKGameCenterViewController
-        if #available(iOS 26.0, *) {
-            // Open the new Games app
-            if let url = URL(string: "games://dashboard") {
-                UIApplication.shared.open(url)
-            } else {
-                print("⚠️ Cannot open Games app")
-            }
-        } else {
-            // Fallback for older iOS versions - would use deprecated GKGameCenterViewController
-            print("⚠️ iOS 26+ required for Games app integration")
-        }
-    }
-    
-    /// Present specific leaderboard (iOS 26 compatible)
-    func presentLeaderboard(_ leaderboardID: LeaderboardIDs) {
-        guard isAuthenticated else { return }
-        
-        // iOS 26: Use the new Games app
-        if #available(iOS 26.0, *) {
-            if let url = URL(string: "games://leaderboard/\(leaderboardID.rawValue)") {
-                UIApplication.shared.open(url)
-            } else {
-                print("⚠️ Cannot open leaderboard in Games app")
-            }
-        } else {
-            // Fallback for older iOS versions - would use deprecated GKGameCenterViewController
-            print("⚠️ iOS 26+ required for Games app integration")
-        }
-    }
-    
-    /// Present achievements (iOS 26 compatible)
-    func presentAchievements() {
-        guard isAuthenticated else { return }
-        
-        // iOS 26: Use the new Games app
-        if #available(iOS 26.0, *) {
-            if let url = URL(string: "games://achievements") {
-                UIApplication.shared.open(url)
-            } else {
-                print("⚠️ Cannot open achievements in Games app")
-            }
-        } else {
-            // Fallback for older iOS versions - would use deprecated GKGameCenterViewController
-            print("⚠️ iOS 26+ required for Games app integration")
-        }
-    }
-    
-    // MARK: - Football Simulation Specific Methods
-    
-    /// Submit season completion stats
-    func submitSeasonStats(wins: Int, losses: Int, championshipWon: Bool, playoffsMade: Bool) async {
-        // Submit wins to test leaderboard
-        await submitScore(wins, to: .test)
-        
-        if championshipWon {
-            await reportAchievement(.test, percentComplete: 100.0)
-        }
-    }
-    
-    /// Submit player milestone achievements
-    func submitPlayerMilestone(_ milestone: PlayerMilestone, value: Int) async {
-        // For testing, just report the test achievement for any milestone
-        if value >= 1000 {
-            await reportAchievement(.test, percentComplete: 100.0)
-        }
-    }
-    
-    /// Submit league management achievements
-    func submitLeagueManagementStats(seasonsManaged: Int, teamsCreated: Int, playersCreated: Int) async {
-        // Submit seasons to test leaderboard
-        await submitScore(seasonsManaged, to: .test)
-        
-        // Report test achievement for any significant activity
-        if seasonsManaged >= 1 || teamsCreated >= 1 || playersCreated >= 1 {
-            await reportAchievement(.test, percentComplete: 100.0)
-        }
-    }
-    
-    /// Test Game Center integration with simple score and achievement
-    func testGameCenter() async {
-        guard isAuthenticated else {
-            print("❌ Not authenticated with Game Center")
-            return
-        }
-        
-        print("🧪 Testing Game Center integration...")
-        
-        // Submit a test score
-        let testScore = Int.random(in: 1...100)
-        await submitScore(testScore, to: .test)
-        
-        // Report test achievement
-        await reportAchievement(.test, percentComplete: 100.0)
-        
-        print("✅ Game Center test completed!")
-    }
 }
-
-// MARK: - Game Center Delegate
-// Note: GKGameCenterControllerDelegate is deprecated in iOS 26
-// The new Games app handles UI presentation automatically
 
 // MARK: - Leaderboard IDs
 enum LeaderboardIDs: String, CaseIterable {
@@ -402,4 +270,4 @@ enum PlayerMilestone {
     case rushingYards
     case receivingYards
     case touchdowns
-} 
+}

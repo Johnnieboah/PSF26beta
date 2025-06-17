@@ -2,161 +2,163 @@ import SwiftUI
 
 struct MainMenuView: View {
     @State private var logoOpacity = 0.0
-    @State private var logoY: CGFloat = 0
-    @State private var button1Opacity = 0.0
-    @State private var button2Opacity = 0.0
-    @State private var button3Opacity = 0.0
-    @State private var button1Y: CGFloat = 0
-    @State private var button2Y: CGFloat = 0
-    @State private var button3Y: CGFloat = 0
-    @State private var showingSettings = false
+    @State private var logoOffset: CGFloat = 0
+    @State private var settingsOpacity = 0.0
+    @State private var loadLeagueOpacity = 0.0
+    @State private var createLeagueOpacity = 0.0
+    @State private var animationComplete = false
     
     var body: some View {
-        ZStack {
-            // Gradient background - full screen
-            Image("gradient-background", bundle: .main)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .ignoresSafeArea()
-            
-            // Logo - centered and full size
-            GeometryReader { geometry in
-                let margin: CGFloat = 40
-                let logoSize = min(geometry.size.width - (margin * 2), geometry.size.height - (margin * 2))
-                
-                let centerY = geometry.size.height / 2
-                let topY = geometry.safeAreaInsets.top + logoSize/2 - 70
-                
-                // Button positioning calculations - moved up for scope access
-                let buttonSpacing: CGFloat = 20
-                let buttonWidth: CGFloat = min(geometry.size.width * 0.8, 300)
-                let buttonHeight: CGFloat = 50
-                
-                let logoFinalBottom = topY + logoSize/2
-                let finalButton1Y = logoFinalBottom + 40
-                let finalButton2Y = finalButton1Y + buttonHeight + buttonSpacing
-                let finalButton3Y = finalButton2Y + buttonHeight + buttonSpacing
-                
-                Image("AppLogo", bundle: .main)
+        GeometryReader { geometry in
+            ZStack {
+                // Background
+                Image("gradient-background")
                     .resizable()
-                    .scaledToFit()
-                    .frame(width: logoSize, height: logoSize)
-                    .opacity(logoOpacity)
-                    .position(x: geometry.size.width / 2, y: logoY == 0 ? centerY : logoY)
-                    .onAppear {
-                        // First: fade in at center
-                        withAnimation(.easeIn(duration: 1.5)) {
-                            logoOpacity = 1.0
-                        }
-                        
-                        // Second: after fade-in, move to top
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                            withAnimation(.easeInOut(duration: 2.0)) {
-                                logoY = topY
+                    .aspectRatio(contentMode: .fill)
+                    .ignoresSafeArea()
+                
+                ZStack {
+                    // Logo - absolutely positioned in center, then moves up
+                    Image("AppLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: min(geometry.size.width - 60, 400), 
+                               height: min(geometry.size.width - 60, 400))
+                        .opacity(logoOpacity)
+                        .position(
+                            x: geometry.size.width / 2,
+                            y: (geometry.size.height / 2) + logoOffset
+                        )
+                    
+                    // Buttons - only show after animation
+                    if animationComplete {
+                        VStack(spacing: 16) {
+                            // Create New League Button
+                            Button(action: {
+                                // Action for create new league
+                            }) {
+                                HStack(spacing: 16) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                    
+                                    Text("Create New League")
+                                        .font(.title3.weight(.semibold))
+                                        .foregroundStyle(.white)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(.white.opacity(0.7))
+                                }
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 16)
+                                .shadow(color: .black.opacity(0.3), radius: 2, x: 1, y: 1)
                             }
+                            .glassEffect(.regular.interactive())
+                            .opacity(createLeagueOpacity)
                             
-                            // Buttons slide up and fade in from bottom to top as logo moves up
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-                                withAnimation(.easeOut(duration: 0.8)) {
-                                    button3Opacity = 1.0
-                                    button3Y = finalButton3Y
+                            // Load League Button
+                            Button(action: {
+                                // Action for load league
+                            }) {
+                                HStack(spacing: 16) {
+                                    Image(systemName: "folder.fill")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                    
+                                    Text("Load League")
+                                        .font(.title3.weight(.semibold))
+                                        .foregroundStyle(.white)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(.white.opacity(0.7))
                                 }
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                                withAnimation(.easeOut(duration: 0.8)) {
-                                    button2Opacity = 1.0
-                                    button2Y = finalButton2Y
-                                }
-                            }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
-                                withAnimation(.easeOut(duration: 0.8)) {
-                                    button1Opacity = 1.0
-                                    button1Y = finalButton1Y
-                                }
-                            }
-                        }
-                    }
-                
-                // Set initial positions off-screen if not yet animated
-                let currentButton1Y = button1Y == 0 ? geometry.size.height + 100 : button1Y
-                let currentButton2Y = button2Y == 0 ? geometry.size.height + 100 : button2Y
-                let currentButton3Y = button3Y == 0 ? geometry.size.height + 100 : button3Y
-                
-                // iOS 26 Liquid Glass Button Container for performance and morphing
-                GlassEffectContainer(spacing: 20.0) {
-                    // Button 1 - Primary Action with tint
-                    Button {
-                        // Action
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                                .symbolEffect(.bounce, value: button1Opacity)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 16)
                                 .shadow(color: .black.opacity(0.3), radius: 2, x: 1, y: 1)
-                            Text("New League")
-                                .font(.title3.weight(.semibold))
+                            }
+                            .glassEffect(.regular.interactive())
+                            .opacity(loadLeagueOpacity)
+                            
+                            // Settings Button
+                            Button(action: {
+                                // Action for settings
+                            }) {
+                                HStack(spacing: 16) {
+                                    Image(systemName: "gearshape.fill")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                    
+                                    Text("Settings")
+                                        .font(.title3.weight(.semibold))
+                                        .foregroundStyle(.white)
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                    
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(.white.opacity(0.7))
+                                }
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 16)
                                 .shadow(color: .black.opacity(0.3), radius: 2, x: 1, y: 1)
+                            }
+                            .glassEffect(.regular.interactive())
+                            .opacity(settingsOpacity)
                         }
-                        .foregroundColor(.white)
-                        .frame(width: buttonWidth, height: buttonHeight)
+                        .padding(.horizontal, 40)
+                        .position(
+                            x: geometry.size.width / 2,
+                            y: geometry.size.height - geometry.safeAreaInsets.bottom - 180
+                        )
                     }
-                    .glassEffect(.regular.tint(.blue.opacity(0.3)).interactive())
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .hoverEffect(.lift)
-                    .sensoryFeedback(.selection, trigger: button1Opacity)
-                    .opacity(button1Opacity)
-                    .position(x: geometry.size.width / 2, y: currentButton1Y)
-                    
-                    // Button 2 - Secondary Action
-                    Button {
-                        // Action
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "tray.and.arrow.down.fill")
-                                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                                .symbolEffect(.bounce, value: button2Opacity)
-                            Text("Load Save")
-                                .font(.title3.weight(.semibold))
-                        }
-                        .foregroundColor(.white)
-                        .frame(width: buttonWidth, height: buttonHeight)
-                    }
-                    .glassEffect(.regular.interactive())
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .hoverEffect(.lift)
-                    .sensoryFeedback(.selection, trigger: button2Opacity)
-                    .opacity(button2Opacity)
-                    .position(x: geometry.size.width / 2, y: currentButton2Y)
-                    
-                    // Button 3 - Tertiary Action
-                    Button {
-                        showingSettings = true
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                                .symbolEffect(.bounce, value: button3Opacity)
-                            Text("Settings")
-                                .font(.title3.weight(.semibold))
-                        }
-                        .foregroundColor(.white)
-                        .frame(width: buttonWidth, height: buttonHeight)
-                    }
-                    .glassEffect(.regular.interactive())
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .hoverEffect(.lift)
-                    .sensoryFeedback(.selection, trigger: button3Opacity)
-                    .opacity(button3Opacity)
-                    .position(x: geometry.size.width / 2, y: currentButton3Y)
                 }
             }
         }
-        .sheet(isPresented: $showingSettings) {
-            SettingsView()
+        .onAppear {
+            startAnimation()
+        }
+    }
+    
+    private func startAnimation() {
+        // Step 1: Fade in logo at exact center
+        withAnimation(.easeIn(duration: 1.5)) {
+            logoOpacity = 1.0
+        }
+        
+        // Step 2: Move logo up from center to final position
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation(.easeInOut(duration: 1.5)) {
+                logoOffset = -200 // Move up from center
+            }
+            
+            // Step 3: Mark animation as complete and fade in buttons
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                animationComplete = true
+                
+                // Fade in buttons from bottom to top
+                withAnimation(.easeOut(duration: 0.8)) {
+                    settingsOpacity = 1.0
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    withAnimation(.easeOut(duration: 0.8)) {
+                        loadLeagueOpacity = 1.0
+                    }
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    withAnimation(.easeOut(duration: 0.8)) {
+                        createLeagueOpacity = 1.0
+                    }
+                }
+            }
         }
     }
 }
 
 #Preview {
     MainMenuView()
-} 
+}
