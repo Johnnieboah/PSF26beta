@@ -7,119 +7,184 @@ struct MainMenuView: View {
     @State private var loadLeagueOpacity = 0.0
     @State private var createLeagueOpacity = 0.0
     @State private var animationComplete = false
+    @State private var scrollOffset: CGFloat = 0
+    @State private var showingSettings = false
+    @State private var showingCreateLeague = false
+    @State private var showingLoadLeague = false
     
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // Background
-                Image("gradient-background")
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .ignoresSafeArea()
-                
+        NavigationStack {
+            GeometryReader { geometry in
                 ZStack {
-                    // Logo - absolutely positioned in center, then moves up
+                    // Background
+                    Image("gradient-background")
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .ignoresSafeArea()
+                    
+                    // Logo positioned behind scrollable content
                     Image("AppLogo")
                         .resizable()
                         .scaledToFit()
-                        .frame(width: min(geometry.size.width - 60, 400), 
-                               height: min(geometry.size.width - 60, 400))
-                        .opacity(logoOpacity)
-                        .position(
-                            x: geometry.size.width / 2,
-                            y: (geometry.size.height / 2) + logoOffset
+                        .frame(
+                            width: logoSize(scrollOffset: scrollOffset, screenWidth: geometry.size.width),
+                            height: logoSize(scrollOffset: scrollOffset, screenWidth: geometry.size.width)
                         )
-                    
-                    // Buttons - only show after animation
-                    if animationComplete {
-                        VStack(spacing: 16) {
-                            // Create New League Button
-                            Button(action: {
-                                // Action for create new league
-                            }) {
-                                HStack(spacing: 16) {
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .foregroundStyle(.white)
-                                    
-                                    Text("Create New League")
-                                        .font(.title3.weight(.semibold))
-                                        .foregroundStyle(.white)
-                                        .frame(maxWidth: .infinity, alignment: .center)
-                                    
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(.white.opacity(0.7))
-                                }
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 16)
-                                .shadow(color: .black.opacity(0.3), radius: 2, x: 1, y: 1)
-                            }
-                            .glassEffect(.regular.interactive())
-                            .opacity(createLeagueOpacity)
-                            
-                            // Load League Button
-                            Button(action: {
-                                // Action for load league
-                            }) {
-                                HStack(spacing: 16) {
-                                    Image(systemName: "folder.fill")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .foregroundStyle(.white)
-                                    
-                                    Text("Load League")
-                                        .font(.title3.weight(.semibold))
-                                        .foregroundStyle(.white)
-                                        .frame(maxWidth: .infinity, alignment: .center)
-                                    
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(.white.opacity(0.7))
-                                }
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 16)
-                                .shadow(color: .black.opacity(0.3), radius: 2, x: 1, y: 1)
-                            }
-                            .glassEffect(.regular.interactive())
-                            .opacity(loadLeagueOpacity)
-                            
-                            // Settings Button
-                            Button(action: {
-                                // Action for settings
-                            }) {
-                                HStack(spacing: 16) {
-                                    Image(systemName: "gearshape.fill")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .foregroundStyle(.white)
-                                    
-                                    Text("Settings")
-                                        .font(.title3.weight(.semibold))
-                                        .foregroundStyle(.white)
-                                        .frame(maxWidth: .infinity, alignment: .center)
-                                    
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(.white.opacity(0.7))
-                                }
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 16)
-                                .shadow(color: .black.opacity(0.3), radius: 2, x: 1, y: 1)
-                            }
-                            .glassEffect(.regular.interactive())
-                            .opacity(settingsOpacity)
-                        }
-                        .padding(.horizontal, 40)
+                        .opacity(logoDisplayOpacity(scrollOffset: scrollOffset, baseOpacity: logoOpacity))
                         .position(
                             x: geometry.size.width / 2,
-                            y: geometry.size.height - geometry.safeAreaInsets.bottom - 180
+                            y: logoYPosition(scrollOffset: scrollOffset, screenHeight: geometry.size.height)
+                        )
+                        .allowsHitTesting(false)
+                    
+                    // ScrollView positioned above logo in ZStack
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(spacing: 0) {
+                            // Top spacer for initial button positioning
+                            Color.clear
+                                .frame(height: geometry.size.height * 0.5)
+                            
+                            VStack(spacing: 16) {
+                                // Create New League Button
+                                Button(action: {
+                                    showingCreateLeague = true
+                                }) {
+                                    HStack(spacing: 16) {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.system(size: 20, weight: .semibold))
+                                            .foregroundStyle(.white)
+                                        
+                                        Text("Create New League")
+                                            .font(.title3.weight(.semibold))
+                                            .foregroundStyle(.white)
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundStyle(.white.opacity(0.7))
+                                    }
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 16)
+                                }
+                                .frame(width: logoWidth(geometry: geometry))
+                                .glassEffect(.regular.interactive())
+                                .opacity(createLeagueOpacity)
+                                
+                                // Load League Button
+                                Button(action: {
+                                    showingLoadLeague = true
+                                }) {
+                                    HStack(spacing: 16) {
+                                        Image(systemName: "folder.fill")
+                                            .font(.system(size: 20, weight: .semibold))
+                                            .foregroundStyle(.white)
+                                        
+                                        Text("Load League")
+                                            .font(.title3.weight(.semibold))
+                                            .foregroundStyle(.white)
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundStyle(.white.opacity(0.7))
+                                    }
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 16)
+                                }
+                                .frame(width: logoWidth(geometry: geometry))
+                                .glassEffect(.regular.interactive())
+                                .opacity(loadLeagueOpacity)
+                                
+                                NavigationLink {
+                                    SettingsView()
+                                } label: {
+                                    HStack(spacing: 16) {
+                                        Image(systemName: "gearshape.fill")
+                                            .font(.system(size: 20, weight: .semibold))
+                                            .foregroundStyle(.white)
+                                        
+                                        Text("Settings")
+                                            .font(.title3.weight(.semibold))
+                                            .foregroundStyle(.white)
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundStyle(.white.opacity(0.7))
+                                    }
+                                    .padding(.horizontal, 24)
+                                    .padding(.vertical, 16)
+                                }
+                                .frame(width: logoWidth(geometry: geometry))
+                                .glassEffect(.regular.interactive())
+                                .opacity(settingsOpacity)
+                            }
+                            .opacity(animationComplete ? 1.0 : 0.0)
+                            .position(x: geometry.size.width / 2, y: 0)
+                            .offset(y: 120)
+                            
+                            // Bottom spacer for scroll content
+                            Color.clear
+                                .frame(height: 400)
+                        }
+                        .background(
+                            GeometryReader { scrollGeometry in
+                                Color.clear
+                                    .onChange(of: scrollGeometry.frame(in: .global).minY) { _, newValue in
+                                        // Only track upward scrolling (positive offset)
+                                        let offset = max(0, -newValue)
+                                        scrollOffset = offset
+                                    }
+                            }
                         )
                     }
                 }
             }
+            .onAppear {
+                startAnimation()
+            }
+            .sheet(isPresented: $showingCreateLeague) {
+                CreateLeagueView()
+            }
+            .sheet(isPresented: $showingLoadLeague) {
+                LoadLeagueView()
+            }
         }
-        .onAppear {
-            startAnimation()
-        }
+    }
+    
+    private func logoWidth(geometry: GeometryProxy) -> CGFloat {
+        return min(geometry.size.width - 40, 500)
+    }
+    
+    private func logoSize(scrollOffset: CGFloat, screenWidth: CGFloat) -> CGFloat {
+        let baseSize: CGFloat = min(screenWidth - 40, 500)
+        let minSize: CGFloat = 100
+        
+        // Only shrink based on upward scroll
+        let scrollFactor: CGFloat = min(scrollOffset / 200, 1)
+        let currentSize = baseSize - (baseSize - minSize) * scrollFactor
+        
+        return max(minSize, currentSize)
+    }
+    
+    private func logoDisplayOpacity(scrollOffset: CGFloat, baseOpacity: Double) -> Double {
+        let scrollFactor: Double = min(Double(scrollOffset) / 250, 1)
+        let currentOpacity = baseOpacity * (1 - scrollFactor * 0.7)
+        
+        return max(0.2, currentOpacity)
+    }
+    
+    private func logoYPosition(scrollOffset: CGFloat, screenHeight: CGFloat) -> CGFloat {
+        let centerY: CGFloat = screenHeight / 2
+        let finalY: CGFloat = centerY + logoOffset
+        
+        // Minimal position adjustment - only move up slightly
+        let scrollAdjustment: CGFloat = scrollOffset * 0.1
+        
+        return finalY - scrollAdjustment
     }
     
     private func startAnimation() {
@@ -131,7 +196,7 @@ struct MainMenuView: View {
         // Step 2: Move logo up from center to final position
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             withAnimation(.easeInOut(duration: 1.5)) {
-                logoOffset = -200 // Move up from center
+                logoOffset = -200
             }
             
             // Step 3: Mark animation as complete and fade in buttons
