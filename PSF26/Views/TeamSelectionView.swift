@@ -55,9 +55,7 @@ struct TeamSelectionView: View {
                         
                         // Continue Button (only show if team is selected)
                         if let selectedTeam = selectedTeam {
-                            Button(action: {
-                                print("Selected team: \(selectedTeam)")
-                            }) {
+                            NavigationLink(destination: TeamManagementView(teamName: selectedTeam, conference: selectedConference?.rawValue ?? "NFC")) {
                                 ContinueButtonContent(selectedTeam: selectedTeam)
                             }
                             .padding(.top, 20)
@@ -70,17 +68,6 @@ struct TeamSelectionView: View {
             .background(Color(.systemBackground))
             .navigationTitle("Choose Conference")
             .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 17, weight: .medium))
-                            .foregroundColor(.blue)
-                    }
-                }
-            }
         }
         .onAppear {
             let allTeams = NFLTeams.allTeams
@@ -202,9 +189,9 @@ struct EnhancedTeamGridView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.primary)
             
-            LazyVStack(spacing: 16) {
+            LazyVStack(spacing: 20) {
                 ForEach(divisions.indices, id: \.self) { divisionIndex in
-                    HStack(spacing: 16) {
+                    HStack(spacing: 24) {
                         ForEach(divisions[divisionIndex].teams, id: \.self) { team in
                             OptimizedTeamLogoButton(
                                 team: team,
@@ -217,7 +204,7 @@ struct EnhancedTeamGridView: View {
                 }
             }
             .scrollTargetLayout()
-            .padding(.horizontal, 50)
+            .padding(.horizontal, 35)
         }
         .scrollClipDisabled()
         .scrollTargetBehavior(.viewAligned)
