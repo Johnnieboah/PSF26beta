@@ -67,7 +67,8 @@ struct TeamSelectionView: View {
             }
             .background(Color(.systemBackground))
             .navigationTitle("Choose Conference")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
+            .scrollClipDisabled()
         }
         .onAppear {
             let allTeams = NFLTeams.allTeams
@@ -332,7 +333,7 @@ struct NFLTeams {
     ]
 }
 
-// MARK: - Continue Button Content
+// MARK: - Simple Continue Button Content
 struct ContinueButtonContent: View {
     let selectedTeam: String
     
