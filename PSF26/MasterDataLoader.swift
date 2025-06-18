@@ -157,7 +157,7 @@ class MasterDataLoader: ObservableObject {
             return []
         }
         
-        return teamData.schedule.map { game in
+        var scheduleGames = teamData.schedule.map { game in
             let isHome = game.homeTeamRealName == fullTeamName
             let opponent = isHome ? game.awayTeamRealName : game.homeTeamRealName
             
@@ -167,7 +167,28 @@ class MasterDataLoader: ObservableObject {
                 isHome: isHome,
                 neutralSite: game.neutralSiteLocation
             )
-        }.sorted { $0.week < $1.week }
+        }
+        
+        // Add missing Chiefs vs Cowboys game for Week 13
+        if shortName == "KansasCity" {
+            // Chiefs are missing week 13 - they play @ Cowboys
+            scheduleGames.append(GameWithContext(
+                week: 13,
+                opponent: "Dallas Cowboys",
+                isHome: false,
+                neutralSite: nil
+            ))
+        } else if shortName == "Dallas" {
+            // Cowboys are missing week 13 - they host Chiefs
+            scheduleGames.append(GameWithContext(
+                week: 13,
+                opponent: "Kansas City Chiefs",
+                isHome: true,
+                neutralSite: nil
+            ))
+        }
+        
+        return scheduleGames.sorted { $0.week < $1.week }
     }
     
     /// Get full team name from short name
@@ -637,4 +658,4 @@ struct MasterGame: Codable, Identifiable {
     var id: String {
         "\(week)_\(awayTeamRealName)_vs_\(homeTeamRealName)"
     }
-} 
+}

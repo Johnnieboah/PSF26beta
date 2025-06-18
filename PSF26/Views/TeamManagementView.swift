@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import PhotosUI
 
 struct TeamManagementView: View {
     let teamName: String
@@ -31,145 +32,88 @@ struct TeamManagementView: View {
     }
     
     var body: some View {
-        ZStack {
-            // Background
-            Color(.systemBackground).ignoresSafeArea()
-            
-            // Native TabView with Liquid Glass
-            TabView(selection: $selectedTab) {
-                // Roster Tab (with Overview as default)
-                NavigationStack {
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            SimplifiedTeamHeaderView(team: team)
-                            
-                            VStack(spacing: 20) {
-                                RosterManagementView(team: $team)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.top, 20)
-                            .padding(.bottom, 20)
-                        }
-                    }
-                    .scrollClipDisabled()
-                    .scrollTargetBehavior(.viewAligned)
-                    .scrollBounceBehavior(.basedOnSize)
-                    .navigationBarHidden(true)
-                }
-                .tabItem {
-                    Image(systemName: "person.3.fill")
-                    Text("Roster")
-                }
-                .tag(ManagementTab.roster)
-                
-                // Schedule Tab
-                NavigationStack {
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            SimplifiedTeamHeaderView(team: team)
-                            
-                            VStack(spacing: 20) {
-                                SeasonScheduleView(team: team)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.top, 20)
-                            .padding(.bottom, 20)
-                        }
-                    }
-                    .scrollClipDisabled()
-                    .scrollTargetBehavior(.viewAligned)
-                    .scrollBounceBehavior(.basedOnSize)
-                    .navigationBarHidden(true)
-                }
-                .tabItem {
-                    Image(systemName: "calendar.badge.clock")
-                    Text("Schedule")
-                }
-                .tag(ManagementTab.schedule)
-                
-                // Settings Tab
-                NavigationStack {
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            SimplifiedTeamHeaderView(team: team)
-                            
-                            VStack(spacing: 20) {
-                                LeagueSetupView(team: team)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.top, 20)
-                            .padding(.bottom, 20)
-                        }
-                    }
-                    .scrollClipDisabled()
-                    .scrollTargetBehavior(.viewAligned)
-                    .scrollBounceBehavior(.basedOnSize)
-                    .navigationBarHidden(true)
-                }
-                .tabItem {
-                    Image(systemName: "gearshape.fill")
-                    Text("Settings")
-                }
-                .tag(ManagementTab.league)
-            }
-            .onAppear {
-                // Configure native iOS 26 Liquid Glass tab bar appearance
-                let appearance = UITabBarAppearance()
-                appearance.configureWithTransparentBackground()
-                appearance.backgroundColor = UIColor.clear
-                
-                // Apply Liquid Glass effect
-                UITabBar.appearance().standardAppearance = appearance
-                UITabBar.appearance().scrollEdgeAppearance = appearance
-                UITabBar.appearance().isTranslucent = true
-            }
-            
-            VStack {
-                HStack {
-                    Button(action: {
-                        dismiss()
-                    }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "chevron.left")
-                                .font(.body)
-                                .fontWeight(.medium)
-                            
-                            Text("Teams")
-                                .font(.body)
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            RoundedRectangle(cornerRadius: 20)
-                                .fill(.ultraThinMaterial)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 20)
-                                        .stroke(.white.opacity(0.3), lineWidth: 1)
-                                )
-                        )
-                        .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
-                    }
-                    .buttonStyle(.plain)
-                    .hoverEffect(.lift)
+        // Native TabView with Liquid Glass and iOS 26 Full-Screen Swipe Back
+        TabView(selection: $selectedTab) {
+            // Roster Tab (with Overview as default)
+            ScrollView {
+                VStack(spacing: 0) {
+                    SimplifiedTeamHeaderView(team: team)
                     
-                    Spacer()
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 10)
-                
-                Spacer()
-            }
-        }
-        .navigationBarHidden(true)
-        .gesture(
-            DragGesture()
-                .onEnded { value in
-                    if value.translation.width > 100 && abs(value.translation.height) < 50 {
-                        dismiss()
+                    VStack(spacing: 20) {
+                        RosterManagementView(team: $team)
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+                    .padding(.bottom, 20)
                 }
-        )
+            }
+            .scrollClipDisabled()
+            .scrollTargetBehavior(.viewAligned)
+            .scrollBounceBehavior(.basedOnSize)
+            .tabItem {
+                Image(systemName: "person.3.fill")
+                Text("Roster")
+            }
+            .tag(ManagementTab.roster)
+            
+            // Schedule Tab
+            ScrollView {
+                VStack(spacing: 0) {
+                    SimplifiedTeamHeaderView(team: team)
+                    
+                    VStack(spacing: 20) {
+                        SeasonScheduleView(team: team)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+                    .padding(.bottom, 20)
+                }
+            }
+            .scrollClipDisabled()
+            .scrollTargetBehavior(.viewAligned)
+            .scrollBounceBehavior(.basedOnSize)
+            .tabItem {
+                Image(systemName: "calendar.badge.clock")
+                Text("Schedule")
+            }
+            .tag(ManagementTab.schedule)
+            
+            // Settings Tab
+            ScrollView {
+                VStack(spacing: 0) {
+                    SimplifiedTeamHeaderView(team: team)
+                    
+                    VStack(spacing: 20) {
+                        LeagueSetupView(team: team)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 20)
+                    .padding(.bottom, 20)
+                }
+            }
+            .scrollClipDisabled()
+            .scrollTargetBehavior(.viewAligned)
+            .scrollBounceBehavior(.basedOnSize)
+            .tabItem {
+                Image(systemName: "gearshape.fill")
+                Text("Settings")
+            }
+            .tag(ManagementTab.league)
+        }
+        .navigationTitle(TeamData.getTeamDisplayName(teamName))
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(false)
+        .onAppear {
+            // Configure native iOS 26 Liquid Glass tab bar appearance
+            let appearance = UITabBarAppearance()
+            appearance.configureWithTransparentBackground()
+            appearance.backgroundColor = UIColor.clear
+            
+            // Apply Liquid Glass effect
+            UITabBar.appearance().standardAppearance = appearance
+            UITabBar.appearance().scrollEdgeAppearance = appearance
+            UITabBar.appearance().isTranslucent = true
+        }
     }
 }
 
@@ -291,7 +235,7 @@ struct TeamData {
         // Convert full team names to short display names
         let teamNameMapping: [String: String] = [
             "Kansas City Chiefs": "Chiefs",
-            "San Francisco 49ers": "49ers", 
+            "San Francisco 49ers": "49ers",
             "Miami Dolphins": "Dolphins",
             "Dallas Cowboys": "Cowboys",
             "Chicago Bears": "Bears",
@@ -329,7 +273,7 @@ struct TeamData {
     
     static func getGameTime(for week: Int) -> String {
         let gameTimes = [
-            "1:00 PM", "1:00 PM", "4:05 PM", "4:25 PM", 
+            "1:00 PM", "1:00 PM", "4:05 PM", "4:25 PM",
             "8:15 PM", "8:20 PM", "7:00 PM"
         ]
         
@@ -759,16 +703,34 @@ struct SeasonScheduleView: View {
         let realSchedule = masterDataLoader.getSchedule(for: team.logoName)
         
         if !realSchedule.isEmpty {
-            return realSchedule.map { game in
-                GameData(
-                    week: game.week,
-                    opponent: TeamData.simplifyOpponentName(game.opponent),
-                    isHome: game.isHome,
-                    date: "Week \(game.week)",
-                    time: TeamData.getGameTime(for: game.week)
-                )
+            // Create 18-week schedule including bye weeks (NFL has 18 weeks total, 17 games + 1 bye)
+            var allWeeks: [GameData] = []
+            let gamesByWeek = Dictionary(grouping: realSchedule) { $0.week }
+            
+            // NFL season spans weeks 1-18
+            for week in 1...18 {
+                if let games = gamesByWeek[week], let game = games.first {
+                    allWeeks.append(GameData(
+                        week: game.week,
+                        opponent: TeamData.simplifyOpponentName(game.opponent),
+                        isHome: game.isHome,
+                        date: "Week \(game.week)",
+                        time: TeamData.getGameTime(for: game.week)
+                    ))
+                } else {
+                    // Missing week - this is a bye week
+                    allWeeks.append(GameData(
+                        week: week,
+                        opponent: "BYE",
+                        isHome: true,
+                        date: "Week \(week)",
+                        time: ""
+                    ))
+                }
             }
+            return allWeeks
         } else {
+            // Fallback to sample data if no real schedule available
             return team.schedule
         }
     }
@@ -788,7 +750,7 @@ struct SeasonScheduleView: View {
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(scheduleGames.count) Games")
+                    Text("\(scheduleGames.filter { $0.opponent != "BYE" }.count) Games")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
@@ -803,13 +765,25 @@ struct SeasonScheduleView: View {
             
             LazyVStack(spacing: 12) {
                 ForEach(scheduleGames) { game in
-                    GameRowView(
-                        game: game,
-                        teamColor: team.primaryColor,
-                        isSelected: selectedWeek == game.week
-                    ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            selectedWeek = selectedWeek == game.week ? nil : game.week
+                    if game.opponent == "BYE" {
+                        ByeWeekRowView(
+                            week: game.week,
+                            teamColor: team.primaryColor,
+                            isSelected: selectedWeek == game.week
+                        ) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                selectedWeek = selectedWeek == game.week ? nil : game.week
+                            }
+                        }
+                    } else {
+                        EnhancedGameRowView(
+                            game: game,
+                            teamColor: team.primaryColor,
+                            isSelected: selectedWeek == game.week
+                        ) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                selectedWeek = selectedWeek == game.week ? nil : game.week
+                            }
                         }
                     }
                 }
@@ -818,52 +792,113 @@ struct SeasonScheduleView: View {
     }
 }
 
-// MARK: - Game Row View
-struct GameRowView: View {
+// MARK: - Enhanced Game Row View (Updated)
+struct EnhancedGameRowView: View {
     let game: GameData
     let teamColor: String
     let isSelected: Bool
     let onTap: () -> Void
     
+    private var opponentTeamName: String {
+        // Convert opponent display name back to short name for logo/color lookup
+        let opponentMapping: [String: String] = [
+            "Chiefs": "KansasCity",
+            "49ers": "SanFrancisco",
+            "Dolphins": "Miami",
+            "Cowboys": "Dallas",
+            "Bears": "Chicago",
+            "Lions": "Detroit",
+            "Packers": "GreenBay",
+            "Vikings": "Minnesota",
+            "Giants": "NYN",
+            "Eagles": "Philadelphia",
+            "Commanders": "Washington",
+            "Falcons": "Atlanta",
+            "Panthers": "Carolina",
+            "Saints": "NewOrleans",
+            "Buccaneers": "TampaBay",
+            "Cardinals": "Arizona",
+            "Rams": "LAN",
+            "Seahawks": "Seattle",
+            "Ravens": "Baltimore",
+            "Bengals": "Cincinnati",
+            "Browns": "Cleveland",
+            "Steelers": "Pittsburgh",
+            "Bills": "Buffalo",
+            "Patriots": "NewEngland",
+            "Jets": "NYA",
+            "Texans": "Houston",
+            "Colts": "Indianapolis",
+            "Jaguars": "Jacksonville",
+            "Titans": "Tennessee",
+            "Broncos": "Denver",
+            "Raiders": "LasVegas",
+            "Chargers": "LAA"
+        ]
+        
+        return opponentMapping[game.opponent] ?? game.opponent
+    }
+    
+    private var opponentColors: TeamColorMapping.TeamColors {
+        return TeamColorMapping.getColors(for: opponentTeamName)
+    }
+    
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 12) {
-                HStack {
+            VStack(spacing: 0) {
+                // Main game content with opponent logo and gradient - no outer background
+                HStack(spacing: 16) {
+                    // Week number inside gradient
                     Text("Week \(game.week)")
                         .font(.headline)
                         .fontWeight(.bold)
-                        .foregroundColor(Color(hex: teamColor))
+                        .foregroundColor(.white)
+                        .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
                     
                     Spacer()
                     
-                    Text(game.date)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                
-                HStack {
-                    HStack(spacing: 8) {
+                    // Game status and opponent
+                    HStack(spacing: 12) {
                         Text(game.isHome ? "vs" : "@")
                             .font(.subheadline)
                             .fontWeight(.medium)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white.opacity(0.8))
+                            .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
+                        
+                        // Opponent team logo
+                        Image(opponentTeamName)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 40, height: 40)
+                            .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 2)
                         
                         Text(game.opponent)
                             .font(.headline)
                             .fontWeight(.semibold)
-                            .foregroundColor(.primary)
+                            .foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
                     }
-                    
-                    Spacer()
-                    
-                    Text(game.time)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
                 }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .background(
+                    // Opponent team gradient background
+                    LinearGradient(
+                        gradient: Gradient(stops: [
+                            .init(color: Color(hex: opponentColors.primary), location: 0.0),
+                            .init(color: Color(hex: opponentColors.secondary), location: 1.0)
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12))
                 
+                // Expanded content when selected
                 if isSelected {
                     VStack(spacing: 8) {
                         Divider()
+                            .padding(.horizontal, 20)
                         
                         HStack {
                             Button("Simulate") {
@@ -888,20 +923,110 @@ struct GameRowView: View {
                             .fontWeight(.semibold)
                             .foregroundColor(Color(hex: teamColor))
                         }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 8)
                     }
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(.ultraThinMaterial)
+                    )
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color(hex: teamColor).opacity(isSelected ? 0.5 : 0.2), lineWidth: isSelected ? 2 : 1)
+            .scaleEffect(isSelected ? 1.02 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSelected)
+        }
+        .buttonStyle(.plain)
+        .sensoryFeedback(.selection, trigger: isSelected)
+    }
+}
+
+// MARK: - Bye Week Row View (Updated)
+struct ByeWeekRowView: View {
+    let week: Int
+    let teamColor: String
+    let isSelected: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 0) {
+                // Bye week content - no outer background, centered
+                HStack {
+                    Spacer()
+                    
+                    HStack(spacing: 16) {
+                        // Week number inside gradient
+                        Text("Week \(week)")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
+                        
+                        HStack(spacing: 12) {
+                            Image(systemName: "moon.zzz.fill")
+                                .font(.title2)
+                                .foregroundColor(.white.opacity(0.9))
+                                .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
+                            
+                            Text("BYE")
+                                .font(.headline)
+                                .fontWeight(.medium)
+                                .foregroundColor(.white)
+                                .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
+                        }
+                    }
+                    
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .background(
+                    // Subtle gradient for bye week
+                    LinearGradient(
+                        gradient: Gradient(stops: [
+                            .init(color: Color.secondary.opacity(0.6), location: 0.0),
+                            .init(color: Color.secondary.opacity(0.4), location: 1.0)
+                        ]),
+                        startPoint: .leading,
+                        endPoint: .trailing
                     )
-            )
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                
+                // Expanded content when selected
+                if isSelected {
+                    VStack(spacing: 8) {
+                        Divider()
+                            .padding(.horizontal, 20)
+                        
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Team gets a week off")
+                                    .font(.subheadline)
+                                    .foregroundColor(.primary)
+                                
+                                Text("• Players recover from injuries")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Text("• Extra time to prepare for next game")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 8)
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(.ultraThinMaterial)
+                    )
+                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                }
+            }
             .scaleEffect(isSelected ? 1.02 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSelected)
         }
@@ -914,20 +1039,91 @@ struct GameRowView: View {
 struct LeagueSetupView: View {
     let team: TeamData
     @State private var leagueSettings: LeagueSettings
+    @State private var startLeagueButtonIsPressed = false
+    
+    // Team Customization Settings
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var teamLogo: UIImage?
+    @State private var showingImageError = false
+    @State private var imageErrorMessage = ""
+    @State private var primaryColor: Color = .blue
+    @State private var secondaryColor: Color = .red
+    @State private var thirdColor: Color = .white
+    
+    // Gameplay Settings
+    @State private var difficulty: String = "Pro"
+    @State private var autoSave: Bool = true
+    @State private var acceleratedClock: Bool = false
+    @State private var gameSpeed: String = "Normal"
+    @State private var autoSetDepthChart: Bool = true
+    @State private var autoFillTeam: Bool = false
+    
+    // Gameplay Settings Enums
+    enum GameDifficulty: String, CaseIterable {
+        case rookie = "Rookie"
+        case semiPro = "Semi-Pro"
+        case pro = "Pro"
+        case hallOfFame = "Hall of Fame"
+        
+        var description: String {
+            switch self {
+            case .rookie: return "Easy gameplay, forgiving AI"
+            case .semiPro: return "Moderate difficulty"
+            case .pro: return "Challenging gameplay"
+            case .hallOfFame: return "Maximum difficulty, legendary"
+            }
+        }
+        
+        var toGlobalDifficulty: PSF26.GameDifficulty {
+            switch self {
+            case .rookie: return .rookie
+            case .semiPro: return .semiPro
+            case .pro: return .pro
+            case .hallOfFame: return .hallOfFame
+            }
+        }
+    }
+    
+    enum GameSpeed: String, CaseIterable {
+        case slow = "Slow"
+        case normal = "Normal"
+        case fast = "Fast"
+        
+        var description: String {
+            switch self {
+            case .slow: return "Detailed animations"
+            case .normal: return "Standard pace"
+            case .fast: return "Quick simulations"
+            }
+        }
+        
+        var toGlobalSpeed: PSF26.GameSpeed {
+            switch self {
+            case .slow: return .slow
+            case .normal: return .normal
+            case .fast: return .fast
+            }
+        }
+    }
     
     init(team: TeamData) {
         self.team = team
         self._leagueSettings = State(initialValue: team.leagueSettings)
+        
+        // Initialize team colors based on current team
+        let teamColors = TeamColorMapping.getColors(for: team.logoName)
+        self._primaryColor = State(initialValue: Color(hex: teamColors.primary))
+        self._secondaryColor = State(initialValue: Color(hex: teamColors.secondary))
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 24) {
             HStack {
                 Image(systemName: "gearshape.fill")
                     .font(.title2)
                     .foregroundColor(Color(hex: team.primaryColor))
                 
-                Text("Settings")
+                Text("Team Settings")
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
@@ -935,138 +1131,335 @@ struct LeagueSetupView: View {
                 Spacer()
             }
             
-            VStack(spacing: 16) {
-                SettingsGroupView(title: "Season Settings", teamColor: team.primaryColor) {
-                    SettingRowView(
-                        title: "Season Length",
-                        value: "\(leagueSettings.seasonLength) games",
-                        teamColor: team.primaryColor
-                    ) {
-                        print("Show picker")
-                    }
-                    
-                    SettingRowView(
-                        title: "Playoff Teams",
-                        value: "\(leagueSettings.playoffTeams) teams",
-                        teamColor: team.primaryColor
-                    ) {
-                        print("Show picker")
-                    }
-                    
-                    SettingRowView(
-                        title: "Trade Deadline",
-                        value: "Week \(leagueSettings.tradeDeadline)",
-                        teamColor: team.primaryColor
-                    ) {
-                        print("Show picker")
-                    }
-                }
-                
-                SettingsGroupView(title: "Gameplay Settings", teamColor: team.primaryColor) {
-                    ToggleSettingRowView(
-                        title: "Injuries",
-                        description: "Players can get injured during games",
-                        isOn: Binding(
-                            get: { leagueSettings.injuriesEnabled },
-                            set: { leagueSettings.injuriesEnabled = $0 }
-                        ),
-                        teamColor: team.primaryColor
-                    )
-                    
-                    ToggleSettingRowView(
-                        title: "Salary Cap",
-                        description: "Teams must manage salary cap limits",
-                        isOn: Binding(
-                            get: { leagueSettings.salaryCapEnabled },
-                            set: { leagueSettings.salaryCapEnabled = $0 }
-                        ),
-                        teamColor: team.primaryColor
-                    )
-                }
+            // Team Customization Section
+            teamCustomizationSection
+            
+            // Gameplay Settings Section
+            gameplaySettingsSection
+            
+            // League Rules Section
+            leagueRulesSection
+            
+            // Start League Button
+            startLeagueButton
+            
+        }
+        .alert("Image Error", isPresented: $showingImageError) {
+            Button("OK") { }
+        } message: {
+            Text(imageErrorMessage)
+        }
+        .onChange(of: selectedPhotoItem) { _, newItem in
+            Task {
+                await loadSelectedImage(from: newItem)
             }
         }
     }
-}
-
-// MARK: - Settings Group View
-struct SettingsGroupView<Content: View>: View {
-    let title: String
-    let teamColor: String
-    @ViewBuilder let content: Content
     
-    var body: some View {
+    // MARK: - Team Customization Section
+    private var teamCustomizationSection: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            sectionHeader(
+                title: "Team Customization",
+                icon: "paintbrush.fill",
+                color: Color(hex: team.primaryColor)
+            )
+            
+            VStack(spacing: 16) {
+                // Team Logo Upload
+                teamLogoSection
+                
+                // Team Colors
+                teamColorsSection
+            }
+            .padding(20)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color(hex: team.primaryColor).opacity(0.3), lineWidth: 1.5)
+            )
+        }
+    }
+    
+    private var teamLogoSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title)
+            Text("Team Logo")
                 .font(.headline)
                 .fontWeight(.semibold)
-                .foregroundColor(.primary)
             
-            VStack(spacing: 8) {
-                content
-            }
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.ultraThinMaterial)
+            HStack(spacing: 16) {
+                // Current Logo Display
+                Group {
+                    if let teamLogo = teamLogo {
+                        Image(uiImage: teamLogo)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                    } else {
+                        Image(team.logoName)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                    }
+                }
+                .frame(width: 80, height: 80)
+                .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color(hex: teamColor).opacity(0.2), lineWidth: 1)
+                        .stroke(.secondary.opacity(0.3), lineWidth: 1)
                 )
-        )
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    PhotosPicker(
+                        selection: $selectedPhotoItem,
+                        matching: .images
+                    ) {
+                        Label("Choose Image", systemImage: "photo.on.rectangle")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(Color(hex: team.primaryColor), in: RoundedRectangle(cornerRadius: 8))
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("• Max size: 512x512 pixels")
+                        Text("• PNG format only")
+                        Text("• Square aspect ratio recommended")
+                    }
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+            }
+        }
     }
-}
-
-// MARK: - Setting Row View
-struct SettingRowView: View {
-    let title: String
-    let value: String
-    let teamColor: String
-    let onTap: () -> Void
     
-    var body: some View {
-        Button(action: onTap) {
-            HStack {
-                Text(title)
+    private var teamColorsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Team Colors")
+                .font(.headline)
+                .fontWeight(.semibold)
+            
+            VStack(spacing: 12) {
+                colorPickerRow(
+                    title: "Primary Color",
+                    description: "Main team color for uniforms and UI",
+                    color: $primaryColor
+                )
+                
+                colorPickerRow(
+                    title: "Secondary Color",
+                    description: "Accent color for details and highlights",
+                    color: $secondaryColor
+                )
+                
+                colorPickerRow(
+                    title: "Third Color",
+                    description: "Additional color for trim and text",
+                    color: $thirdColor
+                )
+            }
+            
+            // Color Preview
+            HStack(spacing: 12) {
+                Text("Preview:")
                     .font(.subheadline)
-                    .foregroundColor(.primary)
+                    .fontWeight(.medium)
+                
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(primaryColor)
+                        .frame(width: 24, height: 24)
+                    
+                    Circle()
+                        .fill(secondaryColor)
+                        .frame(width: 24, height: 24)
+                    
+                    Circle()
+                        .fill(thirdColor)
+                        .frame(width: 24, height: 24)
+                        .overlay(
+                            Circle()
+                                .stroke(.secondary.opacity(0.3), lineWidth: 1)
+                        )
+                }
+                
+                Spacer()
+            }
+            .padding(.top, 8)
+        }
+    }
+    
+    // MARK: - Gameplay Settings Section
+    private var gameplaySettingsSection: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            sectionHeader(
+                title: "Gameplay Settings",
+                icon: "gamecontroller.fill",
+                color: .green
+            )
+            
+            VStack(spacing: 16) {
+                pickerSetting(
+                    title: "Difficulty",
+                    description: "Gameplay difficulty level",
+                    selection: $difficulty,
+                    options: GameDifficulty.allCases.map { $0.rawValue },
+                    icon: "flame.fill"
+                )
+                
+                toggleSetting(
+                    title: "Auto Save",
+                    description: "Automatically save progress after each game",
+                    isOn: $autoSave,
+                    icon: "externaldrive.fill"
+                )
+                
+                toggleSetting(
+                    title: "Auto Set Depth Chart",
+                    description: "Automatically organize players by overall rating",
+                    isOn: $autoSetDepthChart,
+                    icon: "chart.bar.fill"
+                )
+                
+                toggleSetting(
+                    title: "Auto Fill Team",
+                    description: "Automatically fill empty roster spots with free agents",
+                    isOn: $autoFillTeam,
+                    icon: "person.3.sequence.fill"
+                )
+                
+                pickerSetting(
+                    title: "Game Speed",
+                    description: "Game speed and simulation settings",
+                    selection: $gameSpeed,
+                    options: GameSpeed.allCases.map { $0.rawValue },
+                    icon: "clock.fill"
+                )
+            }
+            .padding(20)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(.green.opacity(0.3), lineWidth: 1.5)
+            )
+        }
+    }
+    
+    // MARK: - League Rules Section
+    private var leagueRulesSection: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            sectionHeader(
+                title: "League Rules",
+                icon: "scroll.fill",
+                color: .orange
+            )
+            
+            VStack(spacing: 16) {
+                toggleSetting(
+                    title: "Player Injuries",
+                    description: "Players can get injured during games",
+                    isOn: Binding(
+                        get: { leagueSettings.injuriesEnabled },
+                        set: { leagueSettings.injuriesEnabled = $0 }
+                    ),
+                    icon: "cross.case.fill"
+                )
+                
+                toggleSetting(
+                    title: "Salary Cap",
+                    description: "Teams must manage salary cap limits",
+                    isOn: Binding(
+                        get: { leagueSettings.salaryCapEnabled },
+                        set: { leagueSettings.salaryCapEnabled = $0 }
+                    ),
+                    icon: "dollarsign.circle.fill"
+                )
+            }
+            .padding(20)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(.orange.opacity(0.3), lineWidth: 1.5)
+            )
+        }
+    }
+    
+    // MARK: - Start League Button
+    private var startLeagueButton: some View {
+        NavigationLink {
+            LeagueGameplayView(
+                selectedTeam: team,
+                settings: LeagueGameplaySettings(
+                    difficulty: GameDifficulty(rawValue: difficulty)!.toGlobalDifficulty,
+                    autoSave: autoSave,
+                    autoSetDepthChart: autoSetDepthChart,
+                    autoFillTeam: autoFillTeam,
+                    injuriesEnabled: leagueSettings.injuriesEnabled,
+                    salaryCapEnabled: leagueSettings.salaryCapEnabled,
+                    acceleratedClock: acceleratedClock,
+                    gameSpeed: GameSpeed(rawValue: gameSpeed)!.toGlobalSpeed
+                )
+            )
+        } label: {
+            HStack {
+                Image(systemName: "play.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.white)
+                
+                Text("Start League with \(TeamData.getTeamDisplayName(team.logoName))")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
                 
                 Spacer()
                 
-                Text(value)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(Color(hex: teamColor))
-                
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.white.opacity(0.8))
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
             .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(.regularMaterial)
+                LinearGradient(
+                    gradient: Gradient(stops: [
+                        .init(color: Color(hex: team.primaryColor), location: 0.0),
+                        .init(color: Color(hex: team.secondaryColor), location: 1.0)
+                    ]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                ),
+                in: RoundedRectangle(cornerRadius: 16)
             )
+            .shadow(color: Color(hex: team.primaryColor).opacity(0.4), radius: 8, x: 0, y: 4)
         }
         .buttonStyle(.plain)
+        .padding(.top, 8)
     }
-}
-
-// MARK: - Toggle Setting Row View
-struct ToggleSettingRowView: View {
-    let title: String
-    let description: String
-    @Binding var isOn: Bool
-    let teamColor: String
     
-    var body: some View {
+    // MARK: - Helper Views
+    private func sectionHeader(title: String, icon: String, color: Color) -> some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(color)
+            
+            Text(title)
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+            
+            Spacer()
+        }
+    }
+    
+    private func colorPickerRow(title: String, description: String, color: Binding<Color>) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.subheadline)
                     .fontWeight(.medium)
-                    .foregroundColor(.primary)
                 
                 Text(description)
                     .font(.caption)
@@ -1075,16 +1468,155 @@ struct ToggleSettingRowView: View {
             
             Spacer()
             
-            Toggle("", isOn: $isOn)
-                .tint(Color(hex: teamColor))
+            ColorPicker("", selection: color)
+                .frame(width: 40, height: 30)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(.regularMaterial)
-        )
-        .sensoryFeedback(.selection, trigger: isOn)
+        .padding(.vertical, 4)
+    }
+    
+    private func toggleSetting(title: String, description: String, isOn: Binding<Bool>, icon: String) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(.blue)
+                .frame(width: 20)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Text(description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Toggle("", isOn: isOn)
+                .tint(.blue)
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private func pickerSetting(title: String, description: String, selection: Binding<String>, options: [String], icon: String) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(.blue)
+                .frame(width: 20)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                
+                Text(description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Menu {
+                ForEach(options, id: \.self) { option in
+                    Button {
+                        selection.wrappedValue = option
+                    } label: {
+                        HStack {
+                            Text(option)
+                            if selection.wrappedValue == option {
+                                Spacer()
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(selection.wrappedValue)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.blue)
+                    
+                    Image(systemName: "chevron.down")
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+    
+    // MARK: - Image Processing
+    private func loadSelectedImage(from item: PhotosPickerItem?) async {
+        guard let item = item else { return }
+        
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self) else {
+                await MainActor.run {
+                    showImageError("Unable to load image data")
+                }
+                return
+            }
+            
+            guard let image = UIImage(data: data) else {
+                await MainActor.run {
+                    showImageError("Invalid image format")
+                }
+                return
+            }
+            
+            // Check if it's a PNG
+            guard data.starts(with: [0x89, 0x50, 0x4E, 0x47]) else {
+                await MainActor.run {
+                    showImageError("Please select a PNG image")
+                }
+                return
+            }
+            
+            // Check dimensions
+            let maxSize: CGFloat = 512
+            if image.size.width > maxSize || image.size.height > maxSize {
+                await MainActor.run {
+                    showImageError("Image must be 512x512 pixels or smaller")
+                }
+                return
+            }
+            
+            // Process and resize image if needed
+            let processedImage = await processImage(image)
+            
+            await MainActor.run {
+                self.teamLogo = processedImage
+            }
+            
+        } catch {
+            await MainActor.run {
+                showImageError("Error loading image: \(error.localizedDescription)")
+            }
+        }
+    }
+    
+    private func processImage(_ image: UIImage) async -> UIImage {
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let targetSize = CGSize(width: 512, height: 512)
+                
+                let renderer = UIGraphicsImageRenderer(size: targetSize)
+                let processedImage = renderer.image { _ in
+                    image.draw(in: CGRect(origin: .zero, size: targetSize))
+                }
+                
+                continuation.resume(returning: processedImage)
+            }
+        }
+    }
+    
+    private func showImageError(_ message: String) {
+        imageErrorMessage = message
+        showingImageError = true
+        selectedPhotoItem = nil
     }
 }
 
@@ -1108,7 +1640,7 @@ struct TeamOverallsCard: View {
                 )
                 
                 OverallStatView(
-                    title: "Defense", 
+                    title: "Defense",
                     rating: teamOveralls.defense,
                     color: .red
                 )
@@ -1160,7 +1692,6 @@ struct OverallStatView: View {
         case 70..<90:
             // Green gradient from light (70) to dark (89)
             let normalizedRating = Double(rating - 70) / 19.0 // 0.0 to 1.0
-            let lightness = 0.7 - (normalizedRating * 0.4) // 0.7 to 0.3
             return Color.green.opacity(0.6 + (normalizedRating * 0.4))
         case 90...99:
             // Gold gradient from bright (90) to dark (99)
