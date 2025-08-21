@@ -1,0 +1,120 @@
+{
+  "fill" : "automatic",
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "fill" : {
+            "linear-gradient" : [
+              "srgb:0.95388,0.97488,1.00000,1.00000",
+              "srgb:0.95551,1.00000,0.96393,0.49093"
+            ]
+          },
+          "image-name" : "XXVI.png",
+          "name" : "XXVI",
+          "position" : {
+            "scale" : 0.85,
+            "translation-in-points" : [
+              0,
+              35
+            ]
+          }
+        },
+        {
+          "blend-mode" : "normal",
+          "fill" : {
+            "linear-gradient" : [
+              "srgb:0.95388,0.97488,1.00000,1.00000",
+              "srgb:0.95551,1.00000,0.96393,0.27829"
+            ]
+          },
+          "image-name" : "PSF.png",
+          "name" : "PSF",
+          "position" : {
+            "scale" : 0.95,
+            "translation-in-points" : [
+              11.6875,
+              35
+            ]
+          }
+        },
+        {
+          "blend-mode" : "overlay",
+          "image-name" : "Laces.png",
+          "name" : "Laces"
+        },
+        {
+          "blend-mode" : "overlay",
+          "image-name" : "Stripes.png",
+          "name" : "Stripes"
+        },
+        {
+          "blend-mode" : "overlay",
+          "image-name" : "Crease.png",
+          "name" : "Crease"
+        },
+        {
+          "blend-mode-specializations" : [
+            {
+              "value" : "darken"
+            },
+            {
+              "appearance" : "tinted",
+              "value" : "lighten"
+            }
+          ],
+          "fill-specializations" : [
+            {
+              "appearance" : "dark",
+              "value" : {
+                "solid" : "srgb:0.00000,0.00343,0.00719,0.63461"
+              }
+            },
+            {
+              "appearance" : "tinted",
+              "value" : "none"
+            }
+          ],
+          "hidden-specializations" : [
+            {
+              "value" : false
+            },
+            {
+              "appearance" : "dark",
+              "value" : false
+            }
+          ],
+          "image-name" : "BG.png",
+          "name" : "BG",
+          "opacity-specializations" : [
+            {
+              "appearance" : "tinted",
+              "value" : 0.75
+            }
+          ],
+          "position" : {
+            "scale" : 1.3800000000000003,
+            "translation-in-points" : [
+              0,
+              35
+            ]
+          }
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.5
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

@@ -8,8 +8,8 @@ struct LeagueStandingsView: View {
     @State private var selectedView: StandingsView = .division
     
     enum Conference: String, CaseIterable {
-        case nfc = "NFC"
-        case afc = "AFC"
+    case nfc = "NCFT"
+    case afc = "ACFT"
     }
     
     enum StandingsView: String, CaseIterable {
@@ -54,6 +54,14 @@ struct LeagueStandingsView: View {
                         dismiss()
                     }
                     .fontWeight(.semibold)
+                }
+            }
+            .onAppear {
+                print("🏆 LeagueStandingsView appeared")
+                print("🏆 Total teams in league manager: \(leagueManager.allTeams.count)")
+                print("🏆 Sample team data:")
+                for team in leagueManager.allTeams.prefix(3) {
+                    print("   \(team.name) (\(team.logoName)) - \(team.conference) \(team.division) - Record: \(team.record.wins)-\(team.record.losses)")
                 }
             }
         }
@@ -146,15 +154,9 @@ struct LeagueStandingsView: View {
     // MARK: - Overall Standings Content
     private var overallStandingsContent: some View {
         VStack(spacing: 16) {
-            OverallStandingsCard(
-                conference: .nfc,
-                teams: getTeamsForConference(.nfc),
-                userTeamName: leagueManager.userTeam?.logoName ?? ""
-            )
-            
-            OverallStandingsCard(
-                conference: .afc,
-                teams: getTeamsForConference(.afc),
+            // Single unified standings for all 32 teams
+            AllTeamsStandingsCard(
+                teams: getAllTeamsSorted(),
                 userTeamName: leagueManager.userTeam?.logoName ?? ""
             )
         }
@@ -164,9 +166,9 @@ struct LeagueStandingsView: View {
     private func getDivisionsForConference(_ conference: Conference) -> [String] {
         switch conference {
         case .nfc:
-            return ["NFC North", "NFC East", "NFC South", "NFC West"]
+            return ["NCFT North", "NCFT East", "NCFT South", "NCFT West"]
         case .afc:
-            return ["AFC North", "AFC East", "AFC South", "AFC West"]
+            return ["ACFT North", "ACFT East", "ACFT South", "ACFT West"]
         }
     }
     
@@ -174,22 +176,57 @@ struct LeagueStandingsView: View {
         return leagueManager.allTeams
             .filter { $0.division == division }
             .sorted { team1, team2 in
-                if team1.record.winPercentage != team2.record.winPercentage {
-                    return team1.record.winPercentage > team2.record.winPercentage
-                }
-                return team1.record.wins > team2.record.wins
+                // Use proper NFL tiebreaking logic, not simple win percentage
+                return leagueManager.compareTeamRecords(team1: team1, team2: team2)
             }
     }
     
     private func getTeamsForConference(_ conference: Conference) -> [LeagueTeam] {
-        return leagueManager.allTeams
-            .filter { $0.conference == conference.rawValue }
-            .sorted { team1, team2 in
-                if team1.record.winPercentage != team2.record.winPercentage {
-                    return team1.record.winPercentage > team2.record.winPercentage
-                }
-                return team1.record.wins > team2.record.wins
+        // CRITICAL: Use proper NFL playoff seeding logic, not simple win percentage
+        // This ensures division winners are ALWAYS ranked 1-4, wild cards 5-7
+        let conferenceTeams = leagueManager.allTeams.filter { $0.conference == conference.rawValue }
+        
+        // Get divisions in this conference  
+        let conferenceDivisions = Set(conferenceTeams.map { $0.division })
+        var divisionWinners: [LeagueTeam] = []
+        var wildCardCandidates: [LeagueTeam] = []
+        
+        // STEP 1: Find division winner for each division
+        for division in conferenceDivisions.sorted() {
+            let divisionTeams = conferenceTeams.filter { $0.division == division }
+            let sortedDivisionTeams = divisionTeams.sorted { team1, team2 in
+                return leagueManager.compareTeamRecords(team1: team1, team2: team2)
             }
+            
+            if let winner = sortedDivisionTeams.first {
+                divisionWinners.append(winner)
+                // Add remaining teams to wild card pool
+                let remainingTeams = Array(sortedDivisionTeams.dropFirst())
+                wildCardCandidates.append(contentsOf: remainingTeams)
+            }
+        }
+        
+        // STEP 2: Sort division winners by record for seeds 1-4
+        divisionWinners.sort { team1, team2 in
+            return leagueManager.compareTeamRecords(team1: team1, team2: team2)
+        }
+        
+        // STEP 3: Sort wild card candidates for seeds 5+
+        wildCardCandidates.sort { team1, team2 in
+            return leagueManager.compareTeamRecords(team1: team1, team2: team2)
+        }
+        
+        // STEP 4: Combine with proper NFL seeding - Division winners ALWAYS 1-4
+        return divisionWinners + wildCardCandidates
+    }
+    
+    private func getAllTeamsSorted() -> [LeagueTeam] {
+        // Get both conferences sorted with proper NFL playoff seeding logic
+        let afcTeams = getTeamsForConference(.afc)
+        let nfcTeams = getTeamsForConference(.nfc)
+        
+        // Combine both conferences - AFC first, then NFC
+        return afcTeams + nfcTeams
     }
 }
 
@@ -391,90 +428,120 @@ struct ConferenceStandingsCard: View {
     }
 }
 
-// MARK: - Overall Standings Card
-struct OverallStandingsCard: View {
-    let conference: LeagueStandingsView.Conference
+// MARK: - All Teams Standings Card
+struct AllTeamsStandingsCard: View {
     let teams: [LeagueTeam]
     let userTeamName: String
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Conference Header
+            // Header
             HStack {
-                Text("\(conference.rawValue) Conference")
+                Text("All Teams")
                     .font(.headline)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
                 
                 Spacer()
                 
-                Text("(\(teams.count) teams)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                HStack(spacing: 20) {
+                    Text("W-L")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                        .frame(width: 50, alignment: .center)
+                    
+                    Text("PCT")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                        .frame(width: 50, alignment: .trailing)
+                }
             }
             
-            // Top teams preview
+            // Teams List
             VStack(spacing: 8) {
-                ForEach(Array(teams.prefix(8).enumerated()), id: \.element.id) { index, team in
-                    HStack(spacing: 12) {
-                        // Rank
-                        Text("\(index + 1)")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(index < 7 ? .green : .secondary)
-                            .frame(width: 20)
+                ForEach(Array(teams.enumerated()), id: \.element.id) { index, team in
+                    HStack(spacing: 16) {
+                        // Rank with playoff indicator
+                        HStack(spacing: 4) {
+                            Text("\(index + 1)")
+                                .font(.subheadline)
+                                .fontWeight(.bold)
+                                .foregroundColor(rankColor(for: index))
+                                .frame(width: 25)
+                            
+                            if index < 14 { // Top 14 make playoffs (7 per conference)
+                                Circle()
+                                    .fill(rankColor(for: index))
+                                    .frame(width: 6, height: 6)
+                            }
+                        }
                         
                         // Team Logo
                         Image(team.logoName)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .frame(width: 24, height: 24)
+                            .frame(width: 28, height: 28)
                         
-                        // Team Name (abbreviated)
-                        Text(getAbbreviatedName(team.logoName))
-                            .font(.caption)
+                        // Team Name
+                        Text(TeamData.getTeamDisplayName(team.logoName))
+                            .font(.subheadline)
                             .fontWeight(team.logoName == userTeamName ? .bold : .medium)
                             .foregroundColor(.primary)
+                            .lineLimit(1)
                         
                         Spacer()
                         
                         // Record
                         Text("\(team.record.wins)-\(team.record.losses)")
-                            .font(.caption)
+                            .font(.subheadline)
                             .fontWeight(.semibold)
                             .foregroundColor(team.logoName == userTeamName ? .blue : .secondary)
+                            .frame(width: 50, alignment: .center)
+                        
+                        // Win Percentage
+                        Text(String(format: "%.3f", team.record.winPercentage))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .frame(width: 50, alignment: .trailing)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
                     .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(team.logoName == userTeamName ? .blue.opacity(0.1) : .clear)
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(
+                                team.logoName == userTeamName ? .blue.opacity(0.1) :
+                                index < 14 ? rankColor(for: index).opacity(0.05) : .clear
+                            )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(
+                                team.logoName == userTeamName ? .blue.opacity(0.3) :
+                                index < 14 ? rankColor(for: index).opacity(0.3) : .clear,
+                                lineWidth: team.logoName == userTeamName || index < 14 ? 1 : 0
+                            )
                     )
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(.secondary.opacity(0.2), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(.secondary.opacity(0.3), lineWidth: 1)
         )
     }
     
-    private func getAbbreviatedName(_ logoName: String) -> String {
-        let abbreviations: [String: String] = [
-            "Chicago": "CHI", "Detroit": "DET", "GreenBay": "GB", "Minnesota": "MIN",
-            "Dallas": "DAL", "NYN": "NYG", "Philadelphia": "PHI", "Washington": "WAS",
-            "Atlanta": "ATL", "Carolina": "CAR", "NewOrleans": "NO", "TampaBay": "TB",
-            "Arizona": "ARI", "LAN": "LAR", "SanFrancisco": "SF", "Seattle": "SEA",
-            "Baltimore": "BAL", "Cincinnati": "CIN", "Cleveland": "CLE", "Pittsburgh": "PIT",
-            "Buffalo": "BUF", "Miami": "MIA", "NewEngland": "NE", "NYA": "NYJ",
-            "Houston": "HOU", "Indianapolis": "IND", "Jacksonville": "JAX", "Tennessee": "TEN",
-            "Denver": "DEN", "KansasCity": "KC", "LasVegas": "LV", "LAA": "LAC"
-        ]
-        
-        return abbreviations[logoName] ?? logoName
+    private func rankColor(for index: Int) -> Color {
+        switch index {
+        case 0...1: return .green      // Top 2 seeds (bye week)
+        case 2...6: return .blue       // Wild card teams
+        case 7...13: return .orange    // Playoff contenders
+        default: return .gray          // Out of playoffs
+        }
     }
 }
 

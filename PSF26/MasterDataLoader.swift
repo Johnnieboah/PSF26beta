@@ -9,6 +9,7 @@ class MasterDataLoader: ObservableObject {
     @Published var loadingProgress: Double = 0.0
     @Published var teams: [String: MasterTeamData] = [:]
     @Published var errorMessage: String?
+    @Published var freeAgents: [MasterPlayer] = []  // Add free agents array
     
     static let shared = MasterDataLoader()
     
@@ -23,61 +24,149 @@ class MasterDataLoader: ObservableObject {
         }
     }
     
-    /// Async load the 2025Master.json data for optimal performance
+    /// Optimized async load of master data with roster/schedule overrides
     func loadMasterDataAsync() async {
         isLoading = true
         loadingProgress = 0.0
         
-        do {
-            // Load data on background thread
-            let cleanedData = try await withCheckedThrowingContinuation { continuation in
-                Task.detached {
-                    do {
-                        await MainActor.run { self.loadingProgress = 0.1 }
-                        
-                        guard let url = Bundle.main.url(forResource: "2025Master", withExtension: "json") else {
-                            throw DataLoadError.fileNotFound
+        // Load and process data efficiently on background thread (no throws)
+        let cleanedData = await Task.detached { () async -> [String: MasterTeamData] in
+                // 1) Base: load combined master for schedule fallback
+                guard let baseURL = Bundle.main.url(forResource: "2025Master", withExtension: "json") else {
+                    // If not present, start from empty
+                    return [String: MasterTeamData]()
+                }
+                let baseData = (try? Data(contentsOf: baseURL)) ?? Data()
+                var baseMaster = (try? JSONDecoder().decode([String: MasterTeamData].self, from: baseData)) ?? [:]
+
+                // 2) Optional roster override (Roster2025.json) → replace players per team
+                if let rosterURL = Bundle.main.url(forResource: "Roster2025", withExtension: "json"),
+                   let rosterData = try? Data(contentsOf: rosterURL),
+                   let roster = try? JSONDecoder().decode([String: [MasterPlayer]].self, from: rosterData) {
+                    for (teamName, players) in roster {
+                        if var entry = baseMaster[teamName] {
+                            entry.players = players
+                            baseMaster[teamName] = entry
+                        } else if teamName == "Free Agent" {
+                            // Carry free agents even if not in base schedule
+                            baseMaster[teamName] = MasterTeamData(players: players, schedule: [])
                         }
-                        
-                        await MainActor.run { self.loadingProgress = 0.2 }
-                        
-                        let data = try Data(contentsOf: url)
-                        await MainActor.run { self.loadingProgress = 0.4 }
-                        
-                        let masterData = try JSONDecoder().decode([String: MasterTeamData].self, from: data)
-                        await MainActor.run { self.loadingProgress = 0.6 }
-                        
-                        // Validate and clean the loaded data - this is not async
-                        let cleanedData = await MainActor.run { 
-                            return self.validateAndCleanData(masterData)
-                        }
-                        await MainActor.run { self.loadingProgress = 0.8 }
-                        
-                        continuation.resume(returning: cleanedData)
-                    } catch {
-                        continuation.resume(throwing: error)
                     }
                 }
-            }
-            
-            // Update UI on main thread
-            self.teams = cleanedData
-            self.buildOptimizedCaches(cleanedData)
-            self.loadingProgress = 1.0
-            self.isDataLoaded = true
-            self.isLoading = false
-            
-            print("✅ Master data loaded successfully: \(cleanedData.count) teams")
-            print("🚀 Optimized caches built for instant team access")
-            
-            // Log performance metrics
-            self.logPerformanceMetrics(cleanedData)
-            
-        } catch {
-            self.errorMessage = "Failed to load master data: \(error.localizedDescription)"
-            self.isLoading = false
-            print("❌ Failed to load master data: \(error)")
+
+                // 3) Optional: merge CSV rosters (authoritative) into master players
+                let csvRosters: [String: [PlayerData]]? = {
+                    if let url = ContractImporter.locateCSV() {
+                        return ContractImporter.buildRosters(from: url)
+                    }
+                    return nil
+                }()
+                if let csvRosters {
+                    // Map of short team key -> full display name used in baseMaster
+                    let shortToFull: [String: String] = [
+                        "KansasCity": "Kansas City Chiefs",
+                        "SanFrancisco": "San Francisco 49ers",
+                        "Miami": "Miami Dolphins",
+                        "Dallas": "Dallas Cowboys",
+                        "Chicago": "Chicago Bears",
+                        "Detroit": "Detroit Lions",
+                        "GreenBay": "Green Bay Packers",
+                        "Minnesota": "Minnesota Vikings",
+                        "NYN": "New York Giants",
+                        "Philadelphia": "Philadelphia Eagles",
+                        "Washington": "Washington Commanders",
+                        "Atlanta": "Atlanta Falcons",
+                        "Carolina": "Carolina Panthers",
+                        "NewOrleans": "New Orleans Saints",
+                        "TampaBay": "Tampa Bay Buccaneers",
+                        "Arizona": "Arizona Cardinals",
+                        "LAN": "Los Angeles Rams",
+                        "Seattle": "Seattle Seahawks",
+                        "Baltimore": "Baltimore Ravens",
+                        "Cincinnati": "Cincinnati Bengals",
+                        "Cleveland": "Cleveland Browns",
+                        "Pittsburgh": "Pittsburgh Steelers",
+                        "Buffalo": "Buffalo Bills",
+                        "NewEngland": "New England Patriots",
+                        "NYA": "New York Jets",
+                        "Houston": "Houston Texans",
+                        "Indianapolis": "Indianapolis Colts",
+                        "Jacksonville": "Jacksonville Jaguars",
+                        "Tennessee": "Tennessee Titans",
+                        "Denver": "Denver Broncos",
+                        "LasVegas": "Las Vegas Raiders",
+                        "LAA": "Los Angeles Chargers"
+                    ]
+                    for (short, csvPlayers) in csvRosters {
+                        if short == "Free Agent" { continue }
+                        let full = shortToFull[short] ?? short
+                        guard let existing = baseMaster[full] else { continue }
+                        // Convert CSV PlayerData → MasterPlayer (preserve APY as actualSalary in dollars)
+                        let converted: [MasterPlayer] = csvPlayers.map { MasterPlayer.makeFromCSV(player: $0, teamFullName: full) }
+                        baseMaster[full] = MasterTeamData(players: converted, schedule: existing.schedule)
+                    }
+                }
+
+                // 4) Optional schedule overrides (kickoff time / neutral site)
+                if let overridesURL = Bundle.main.url(forResource: "2025ScheduleOverrides", withExtension: "json"),
+                   let overridesData = try? Data(contentsOf: overridesURL) {
+                    let decoder = JSONDecoder()
+                    let overrides = (try? decoder.decode([MasterGameOverride].self, from: overridesData)) ?? []
+                    let overrideMap = Dictionary(uniqueKeysWithValues: overrides.map { ($0.pairKey, $0) })
+                    for (teamName, teamData) in baseMaster {
+                        let updatedSchedule: [MasterGame] = teamData.schedule.map { game in
+                            let key = MasterGameOverride.makePairKey(week: game.week, a: game.awayTeamRealName, b: game.homeTeamRealName)
+                            if let ov = overrideMap[key] {
+                                return MasterGame(
+                                    week: game.week,
+                                    awayTeamRealName: game.awayTeamRealName,
+                                    homeTeamRealName: game.homeTeamRealName,
+                                    neutralSiteLocation: ov.neutralSiteLocation ?? game.neutralSiteLocation,
+                                    kickoffISO8601: ov.kickoffISO8601
+                                )
+                            } else {
+                                return game
+                            }
+                        }
+                        baseMaster[teamName] = MasterTeamData(players: teamData.players, schedule: updatedSchedule)
+                    }
+                }
+
+                // 5) Validate and clean (avoid capturing mutable var across actors)
+                let snapshot = baseMaster
+                return await MainActor.run {
+                    self.loadingProgress = 0.8
+                    return self.validateAndCleanData(snapshot)
+                }
+        }.value
+        
+        // Update UI on main thread
+        self.teams = cleanedData
+        
+        // Load free agents from the "Free Agent" team if it exists
+        if let freeAgentTeam = cleanedData["Free Agent"] {
+            self.freeAgents = freeAgentTeam.players.sorted { Int($0.overall) ?? 0 > Int($1.overall) ?? 0 }
         }
+        
+        // Build caches BEFORE marking data as loaded
+        self.buildOptimizedCaches(cleanedData)
+        
+        self.loadingProgress = 1.0
+        self.isDataLoaded = true
+        self.isLoading = false
+        
+        print("✅ Master data loaded successfully: \(cleanedData.count) teams")
+        print("🚀 Optimized caches built for instant team access")
+        print("👥 Free agents loaded: \(self.freeAgents.count) players")
+        
+        // Log performance metrics
+        self.logPerformanceMetrics(cleanedData)
+        
+        // Audit team roster sizes
+        self.auditTeamRosterSizes(cleanedData)
+        
+        // Notify that master data is now available
+        NotificationCenter.default.post(name: NSNotification.Name("MasterDataLoaded"), object: nil)
     }
     
     /// Build optimized lookup caches for O(1) access
@@ -128,6 +217,10 @@ class MasterDataLoader: ObservableObject {
                 teamsByShortName[shortName] = teamData
                 playersByTeam[shortName] = teamData.players
                 allTeamNames.append(shortName)
+                print("✅ Cached \(shortName) -> \(fullName) (\(teamData.players.count) players)")
+            } else {
+                print("❌ Missing team data for \(shortName) -> \(fullName)")
+                print("   Available keys: \(Array(data.keys).prefix(5).sorted()) (showing first 5)")
             }
         }
         
@@ -142,12 +235,43 @@ class MasterDataLoader: ObservableObject {
     
     /// Get players for a team instantly - O(1) lookup  
     func getPlayers(for shortName: String) -> [MasterPlayer] {
+        // If data isn't loaded yet, return empty array and let the caller handle it
+        guard isDataLoaded else {
+            print("⚠️ getPlayers(for: \"\(shortName)\") called but data not loaded yet (isDataLoaded: \(isDataLoaded), isLoading: \(isLoading))")
+            return []
+        }
+        
+        if shortName == "Free Agent" {
+            return freeAgents.sorted { Int($0.overall) ?? 0 > Int($1.overall) ?? 0 }
+        }
+        
         return playersByTeam[shortName] ?? []
+    }
+    
+    /// Get players for a team, waiting for data to load if necessary
+    func getPlayersAsync(for shortName: String) async -> [MasterPlayer] {
+        // Wait for data to be loaded if it's currently loading
+        while isLoading && !isDataLoaded {
+            try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+        }
+        
+        // If still not loaded after waiting, return empty array
+        guard isDataLoaded else {
+            print("⚠️ Master data failed to load for \(shortName)")
+            return []
+        }
+        
+        return getPlayers(for: shortName)
     }
     
     /// Get all available team names (short names) - pre-sorted
     func getAvailableTeams() -> [String] {
-        return allTeamNames
+        var teams = allTeamNames
+        // Add Free Agent team if it has players
+        if !freeAgents.isEmpty {
+            teams.append("Free Agent")
+        }
+        return teams.sorted()
     }
     
     /// Get team schedule with proper home/away context
@@ -183,6 +307,25 @@ class MasterDataLoader: ObservableObject {
             scheduleGames.append(GameWithContext(
                 week: 13,
                 opponent: "Kansas City Chiefs",
+                isHome: true,
+                neutralSite: nil
+            ))
+        }
+        
+        // Add missing Miami vs Jets game for Week 14
+        if shortName == "Miami" {
+            // Miami is missing week 14 - they play @ Jets
+            scheduleGames.append(GameWithContext(
+                week: 14,
+                opponent: "New York Jets",
+                isHome: false,
+                neutralSite: nil
+            ))
+        } else if shortName == "NYA" {
+            // Jets are missing week 14 - they host Miami
+            scheduleGames.append(GameWithContext(
+                week: 14,
+                opponent: "Miami Dolphins",
                 isHome: true,
                 neutralSite: nil
             ))
@@ -245,6 +388,54 @@ class MasterDataLoader: ObservableObject {
         print("   Memory footprint: ~\(String(format: "%.1f", Double(totalPlayers * 500) / 1024 / 1024))MB")
         print("   Lookup performance: O(1) for all team operations")
     }
+    
+    /// Audit team roster sizes to ensure consistency
+    private func auditTeamRosterSizes(_ data: [String: MasterTeamData]) {
+        print("📊 Master Data Roster Audit:")
+        
+        var teamCounts: [String: Int] = [:]
+        var totalTeams = 0
+        var teamsWithInsufficientPlayers = 0
+        var minPlayers = Int.max
+        var maxPlayers = 0
+        
+        for (teamName, teamData) in data {
+            // Skip Free Agent team from audit
+            if teamName == "Free Agent" {
+                continue
+            }
+            
+            let playerCount = teamData.players.count
+            teamCounts[teamName] = playerCount
+            totalTeams += 1
+            
+            if playerCount < 50 {
+                teamsWithInsufficientPlayers += 1
+                print("   ⚠️ \(teamName): \(playerCount) players (insufficient)")
+            }
+            
+            minPlayers = min(minPlayers, playerCount)
+            maxPlayers = max(maxPlayers, playerCount)
+        }
+        
+        print("   📈 Total NFL Teams: \(totalTeams)")
+        print("   📈 Min Players: \(minPlayers)")
+        print("   📈 Max Players: \(maxPlayers)")
+        print("   📈 Teams with <50 players: \(teamsWithInsufficientPlayers)")
+        
+        if teamsWithInsufficientPlayers > 0 {
+            print("   ⚠️ Some teams have insufficient players - PlayerDataManager will balance to 60")
+            print("   💡 Consider updating your 2025Master.json file with complete rosters for these teams")
+        } else {
+            print("   ✅ All teams have sufficient players for balancing")
+        }
+    }
+
+    // MARK: - Free Agent Management
+    
+    func removePlayerFromFreeAgents(_ player: MasterPlayer) {
+        freeAgents.removeAll { $0.id == player.id }
+    }
 
     // MARK: - Data Validation (Optimized)
     
@@ -252,14 +443,17 @@ class MasterDataLoader: ObservableObject {
     private func validateAndCleanData(_ rawData: [String: MasterTeamData]) -> [String: MasterTeamData] {
         var cleanedData: [String: MasterTeamData] = [:]
         
+        print("🧹 Starting data validation for \(rawData.count) teams")
+        
         for (teamName, teamData) in rawData {
             // Clean team name
             let cleanTeamName = teamName.trimmingCharacters(in: .whitespacesAndNewlines)
             
-            // Skip Free Agent team if it has too many players (likely not a real team)
-            if cleanTeamName == "Free Agent" && teamData.players.count > 100 {
-                print("⚠️ Skipping '\(cleanTeamName)' team with \(teamData.players.count) players (likely not a real team)")
-                continue
+
+            
+            // Keep Free Agent team regardless of size
+            if cleanTeamName == "Free Agent" {
+                print("📋 Loading '\(cleanTeamName)' team with \(teamData.players.count) players")
             }
             
             // Clean and validate players
@@ -267,13 +461,20 @@ class MasterDataLoader: ObservableObject {
             var usedJerseyNumbers: Set<Int> = []
             
             // Process all players and handle jersey number conflicts
+            var filteredCount = 0
             for player in teamData.players {
                 // Skip players with invalid basic data
-                guard !player.firstName.isEmpty && !player.lastName.isEmpty else { continue }
+                guard !player.firstName.isEmpty && !player.lastName.isEmpty else { 
+                    filteredCount += 1
+                    continue 
+                }
                 
                 // Clean and standardize position
                 let cleanedPosition = cleanAndStandardizePosition(player.position)
-                guard !cleanedPosition.isEmpty else { continue }
+                guard !cleanedPosition.isEmpty else { 
+                    filteredCount += 1
+                    continue 
+                }
                 
                 // Handle jersey numbers - check for conflicts and assign appropriately
                 let cleanedJerseyNum: String
@@ -309,7 +510,16 @@ class MasterDataLoader: ObservableObject {
             )
             
             cleanedData[cleanTeamName] = cleanedTeamData
+            
+            // Debug logging for teams with insufficient players
+            if cleanedPlayers.count < 50 {
+                print("🔍 DEBUG: \(cleanTeamName) - Original: \(teamData.players.count) players, Cleaned: \(cleanedPlayers.count) players, Filtered: \(filteredCount)")
+                print("   📋 Sample players: \(cleanedPlayers.prefix(3).map { "\($0.firstName) \($0.lastName) (\($0.position))" })")
+            }
+
         }
+        
+        print("🧹 Data validation complete. \(cleanedData.count) teams processed")
         
         return cleanedData
     }
@@ -457,7 +667,7 @@ struct GameWithContext: Identifiable {
 
 // MARK: - Master Data Models (Unchanged)
 struct MasterTeamData: Codable {
-    let players: [MasterPlayer]
+    var players: [MasterPlayer]
     let schedule: [MasterGame]
 }
 
@@ -476,6 +686,7 @@ struct MasterPlayer: Codable, Identifiable {
     let yearsPro: String
     let history: [String] // Usually empty
     let attributes: MasterPlayerAttributes
+    let actualSalary: Int?
     
     // Custom coding keys to map the raw JSON fields
     enum CodingKeys: String, CodingKey {
@@ -483,7 +694,7 @@ struct MasterPlayer: Codable, Identifiable {
         case _lastName = "lastName"
         case position, team
         case _college = "college"
-        case age, overall, height, weight, handedness, jerseyNum, yearsPro, history, attributes
+        case age, overall, height, weight, handedness, jerseyNum, yearsPro, history, attributes, actualSalary
     }
     
     // Cleaned up computed properties
@@ -523,39 +734,57 @@ struct MasterPlayer: Codable, Identifiable {
         cleaned = cleaned.trimmingCharacters(in: CharacterSet(charactersIn: "\"'`"))
         cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        // Enhanced year removal patterns - catch ALL variations
-        // Pattern 1: Years in parentheses like "(1995)" or " (1995)"
-        cleaned = cleaned.replacingOccurrences(of: #"\s*\(\d{4}\).*$"#, with: "", options: .regularExpression)
-        
-        // Pattern 2: Years with just closing parenthesis like "1995)" or " 1995)"
-        cleaned = cleaned.replacingOccurrences(of: #"\s*\d{4}\).*$"#, with: "", options: .regularExpression)
-        
-        // Pattern 3: Standalone years like "1995" or " 1995" - more aggressive
+        // Enhanced cleaning patterns - be more aggressive with malformed data
+        // Pattern 1: Remove anything with years (4 digits) and everything after
         cleaned = cleaned.replacingOccurrences(of: #"\s*\d{4}.*$"#, with: "", options: .regularExpression)
         
-        // Pattern 4: Any 4-digit number (birth years, etc.)
-        cleaned = cleaned.replacingOccurrences(of: #"\b\d{4}\b.*$"#, with: "", options: .regularExpression)
+        // Pattern 2: Remove any parentheses content and everything after
+        cleaned = cleaned.replacingOccurrences(of: #"\s*\([^)]*.*$"#, with: "", options: .regularExpression)
         
-        // Pattern 5: Remove any trailing parenthesis content
-        cleaned = cleaned.replacingOccurrences(of: #"\s*\([^)]*\).*$"#, with: "", options: .regularExpression)
+        // Pattern 3: Remove trailing parenthesis without opening
+        cleaned = cleaned.replacingOccurrences(of: #"\s*\).*$"#, with: "", options: .regularExpression)
         
-        // Pattern 6: Remove any trailing parenthesis without content
-        cleaned = cleaned.replacingOccurrences(of: #"\s*[\(\)]+.*$"#, with: "", options: .regularExpression)
+        // Pattern 4: Remove NFL suffix patterns (Jr, Sr, III, etc.) and everything after
+        cleaned = cleaned.replacingOccurrences(of: #"\s*(Jr\.?|Sr\.?|III|II|IV|V).*$"#, with: "", options: .regularExpression)
         
-        // Pattern 7: Remove NFL suffix patterns
-        cleaned = cleaned.replacingOccurrences(of: #"\s*(Jr\.?|Sr\.?|III|II|IV).*$"#, with: "", options: .regularExpression)
+        // Pattern 5: Remove any non-alphabetic characters at the end (except apostrophes and hyphens in names)
+        cleaned = cleaned.replacingOccurrences(of: #"[^\w\s\-\']+.*$"#, with: "", options: .regularExpression)
         
-        // Pattern 8: Remove any non-letter characters at the end except apostrophes and hyphens
-        cleaned = cleaned.replacingOccurrences(of: #"[^\w\s\-\']+$"#, with: "", options: .regularExpression)
+        // Pattern 6: Remove any trailing numbers or special characters
+        cleaned = cleaned.replacingOccurrences(of: #"\s*\d+.*$"#, with: "", options: .regularExpression)
         
-        // Clean up extra whitespace again after all replacements
+        // Pattern 7: Keep only valid name characters (letters, spaces, apostrophes, hyphens)
+        cleaned = cleaned.replacingOccurrences(of: #"[^\w\s\-\']"#, with: "", options: .regularExpression)
+        
+        // Clean up extra whitespace after all replacements
         cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
         cleaned = cleaned.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
         
-        // Handle empty names
-        if cleaned.isEmpty {
-            return name.isEmpty ? "Unknown" : name
+        // Validate the result - ensure it contains only valid name characters
+        let validNamePattern = #"^[A-Za-z\s\-\']+$"#
+        let isValid = cleaned.range(of: validNamePattern, options: .regularExpression) != nil
+        if !isValid {
+            // If the cleaned name is still invalid, extract only the first valid word
+            let words = cleaned.components(separatedBy: .whitespacesAndNewlines)
+            for word in words {
+                let cleanWord = word.replacingOccurrences(of: #"[^\w\-\']"#, with: "", options: .regularExpression)
+                if !cleanWord.isEmpty && cleanWord.range(of: #"^[A-Za-z\-\']+$"#, options: .regularExpression) != nil {
+                    cleaned = cleanWord
+                    break
+                }
+            }
         }
+        
+        // Final validation - if still empty or invalid, use fallback names
+        if cleaned.isEmpty || cleaned.count < 2 {
+            // Generate a fallback name based on the original string hash
+            let fallbackNames = ["John", "Mike", "Chris", "David", "Ryan", "Alex", "Matt", "Josh", "Nick", "Tom"]
+            let hash = abs(name.hashValue)
+            return fallbackNames[hash % fallbackNames.count]
+        }
+        
+        // Capitalize first letter of each word
+        cleaned = cleaned.capitalized
         
         return cleaned
     }
@@ -576,6 +805,42 @@ struct MasterPlayer: Codable, Identifiable {
         }
         
         return cleaned
+    }
+}
+
+// Convenience factory for building master players from CSV PlayerData
+extension MasterPlayer {
+    nonisolated(unsafe) static func makeFromCSV(player p: PlayerData, teamFullName: String) -> MasterPlayer {
+        // Build a minimal attribute set (all nil) – attributes can be enriched later
+        let attrs = MasterPlayerAttributes(
+            speed: nil, agility: nil, awareness: nil, strength: nil, stamina: nil, injury: nil,
+            carrying: nil, trucking: nil, catching: nil, breakTackle: nil, jukeMove: nil, spinMove: nil, stiffArm: nil, acceleration: nil, changeOfDirection: nil,
+            throwPower: nil, throwAccuracyShort: nil, throwAccuracyMid: nil, throwAccuracyDeep: nil, throwOnTheRun: nil, throwUnderPressure: nil, playAction: nil,
+            tackle: nil, blockShedding: nil, zoneCoverage: nil, manCoverage: nil, pursuit: nil, finesseMoves: nil, powerMoves: nil, press: nil, jumping: nil,
+            passBlock: nil, runBlock: nil, impactBlocking: nil,
+            kickPower: nil, kickAccuracy: nil,
+            release: nil, catchInTraffic: nil, spectacularCatch: nil,
+            shortRouteRunning: nil, mediumRouteRunning: nil, deepRouteRunning: nil,
+            playRecognition: nil, toughness: nil, hitPower: nil, bCVision: nil, passBlockPower: nil, runBlockPower: nil, passBlockFinesse: nil, runBlockFinesse: nil
+        )
+        // Use memberwise initializer inside type scope
+        return MasterPlayer(
+            _firstName: p.firstName,
+            _lastName: p.lastName,
+            position: p.position,
+            team: teamFullName,
+            _college: "",
+            age: String(p.age),
+            overall: String(p.overall),
+            height: String(p.height),
+            weight: "0",
+            handedness: "Right",
+            jerseyNum: String(p.number),
+            yearsPro: String(max(0, p.age - 22)),
+            history: [],
+            attributes: attrs,
+            actualSalary: p.actualSalary
+        )
     }
 }
 
@@ -654,8 +919,26 @@ struct MasterGame: Codable, Identifiable {
     let awayTeamRealName: String
     let homeTeamRealName: String
     let neutralSiteLocation: String?
+    let kickoffISO8601: String?
     
     var id: String {
         "\(week)_\(awayTeamRealName)_vs_\(homeTeamRealName)"
+    }
+}
+
+// MARK: - Schedule Overrides Support Types
+nonisolated struct MasterGameOverride: Codable {
+    let week: Int
+    let awayTeamRealName: String
+    let homeTeamRealName: String
+    let neutralSiteLocation: String?
+    let kickoffISO8601: String?
+    
+    // Order-agnostic pairing key so overrides apply regardless of per-team perspective
+    var pairKey: String { Self.makePairKey(week: week, a: awayTeamRealName, b: homeTeamRealName) }
+    
+    static func makePairKey(week: Int, a: String, b: String) -> String {
+        let pair = [a, b].sorted()
+        return "\(week)_\(pair[0])_\(pair[1])"
     }
 }

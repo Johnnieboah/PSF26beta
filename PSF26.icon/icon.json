@@ -10,6 +10,7 @@
               "srgb:0.95551,1.00000,0.96393,0.49093"
             ]
           },
+          "hidden" : false,
           "image-name" : "XXVI.png",
           "name" : "XXVI",
           "position" : {
@@ -40,16 +41,19 @@
         },
         {
           "blend-mode" : "overlay",
+          "hidden" : false,
           "image-name" : "Laces.png",
           "name" : "Laces"
         },
         {
           "blend-mode" : "overlay",
+          "hidden" : false,
           "image-name" : "Stripes.png",
           "name" : "Stripes"
         },
         {
           "blend-mode" : "overlay",
+          "hidden" : false,
           "image-name" : "Crease.png",
           "name" : "Crease"
         },

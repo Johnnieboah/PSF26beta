@@ -1,0 +1,24 @@
+"/Users/jay/Documents/PSF26/PSF26/Views/iOS26EnhancedComponents.swift":
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/iOS26EnhancedComponents.o"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/iOS26EnhancedComponents.d"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/iOS26EnhancedComponents.swiftdeps"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/iOS26EnhancedComponents.dia"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/iOS26EnhancedComponents.swiftconstvalues"
+"/Users/jay/Documents/PSF26/PSF26/Views/RosterManagementView.swift":
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/RosterManagementView.dia"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/RosterManagementView.d"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/RosterManagementView.swiftconstvalues"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/RosterManagementView.swiftdeps"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/RosterManagementView.o"
+"/Users/jay/Documents/PSF26/PSF26/Views/TeamSelectionView.swift":
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/TeamSelectionView.swiftconstvalues"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/TeamSelectionView.swiftdeps"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/TeamSelectionView.dia"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/TeamSelectionView.o"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/TeamSelectionView.d"
+"/Users/jay/Documents/PSF26/PSF26/Models/LeagueFlowManager.swift":
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/LeagueFlowManager.dia"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/LeagueFlowManager.swiftconstvalues"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/LeagueFlowManager.d"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/LeagueFlowManager.o"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/LeagueFlowManager.swiftdeps"

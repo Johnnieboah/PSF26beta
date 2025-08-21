@@ -1,0 +1,30 @@
+"/Users/jay/Documents/PSF26/PSF26/Models/LeagueFlowManager.swift":
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueFlowManager.o"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueFlowManager.d"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueFlowManager.swiftdeps"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueFlowManager.swiftconstvalues"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueFlowManager.dia"
+"/Users/jay/Documents/PSF26/PSF26/PSF26App.swift":
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/PSF26App.d"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/PSF26App.o"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/PSF26App.swiftdeps"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/PSF26App.swiftconstvalues"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/PSF26App.dia"
+"/Users/jay/Documents/PSF26/PSF26/MasterDataLoader.swift":
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/MasterDataLoader.swiftdeps"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/MasterDataLoader.dia"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/MasterDataLoader.o"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/MasterDataLoader.d"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/MasterDataLoader.swiftconstvalues"
+"/Users/jay/Documents/PSF26/PSF26/Views/GameComponents/AdvancedGameSimulation.swift":
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/AdvancedGameSimulation.dia"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/AdvancedGameSimulation.d"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/AdvancedGameSimulation.o"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/AdvancedGameSimulation.swiftconstvalues"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/AdvancedGameSimulation.swiftdeps"
+"/Users/jay/Documents/PSF26/PSF26/Views/LoadLeagueView.swift":
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LoadLeagueView.swiftdeps"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LoadLeagueView.dia"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LoadLeagueView.d"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LoadLeagueView.o"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LoadLeagueView.swiftconstvalues"

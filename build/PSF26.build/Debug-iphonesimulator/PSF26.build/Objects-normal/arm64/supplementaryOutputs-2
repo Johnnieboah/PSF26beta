@@ -1,0 +1,24 @@
+"/Users/jay/Documents/PSF26/PSF26/Views/CreateLeagueView.swift":
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/CreateLeagueView.swiftconstvalues"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/CreateLeagueView.o"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/CreateLeagueView.d"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/CreateLeagueView.dia"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/CreateLeagueView.swiftdeps"
+"/Users/jay/Documents/PSF26/PSF26/Models/LeagueStorageManager.swift":
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/LeagueStorageManager.swiftdeps"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/LeagueStorageManager.o"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/LeagueStorageManager.swiftconstvalues"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/LeagueStorageManager.dia"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/LeagueStorageManager.d"
+"/Users/jay/Documents/PSF26/PSF26/ContentView.swift":
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/ContentView.swiftconstvalues"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/ContentView.d"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/ContentView.swiftdeps"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/ContentView.dia"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/ContentView.o"
+"/Users/jay/Documents/PSF26/PSF26/Views/LeagueStandingsView.swift":
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/LeagueStandingsView.dia"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/LeagueStandingsView.swiftdeps"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/LeagueStandingsView.o"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/LeagueStandingsView.d"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphonesimulator/PSF26.build/Objects-normal/arm64/LeagueStandingsView.swiftconstvalues"

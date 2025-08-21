@@ -1,0 +1,24 @@
+"/Users/jay/Documents/PSF26/PSF26/Views/iOS26MetalOptimizedComponents.swift":
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/iOS26MetalOptimizedComponents.swiftdeps"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/iOS26MetalOptimizedComponents.dia"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/iOS26MetalOptimizedComponents.d"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/iOS26MetalOptimizedComponents.swiftconstvalues"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/iOS26MetalOptimizedComponents.o"
+"/Users/jay/Documents/PSF26/PSF26/Views/MetalPerformanceDashboard.swift":
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/MetalPerformanceDashboard.dia"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/MetalPerformanceDashboard.swiftdeps"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/MetalPerformanceDashboard.o"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/MetalPerformanceDashboard.swiftconstvalues"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/MetalPerformanceDashboard.d"
+"/Users/jay/Documents/PSF26/PSF26/Views/LeagueComponents/LeagueNavigationView.swift":
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueNavigationView.swiftdeps"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueNavigationView.o"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueNavigationView.dia"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueNavigationView.d"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueNavigationView.swiftconstvalues"
+"/Users/jay/Documents/PSF26/PSF26/Views/TeamManagementView.swift":
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/TeamManagementView.swiftdeps"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/TeamManagementView.d"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/TeamManagementView.o"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/TeamManagementView.swiftconstvalues"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/TeamManagementView.dia"

@@ -4,13 +4,15 @@ struct LoadLeagueView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingDeleteAlert = false
     @State private var selectedSlotToDelete: Int?
+    @State private var selectedLeagueToDelete: League?
     @State private var alertMessage = ""
     @State private var showingAlert = false
     @State private var showingLoadConfirmation = false
-    @State private var selectedSlotToLoad: SaveSlot?
-    @State private var showingCreateLeague = false
+    @State private var selectedLeagueToLoad: League?
+    @State private var showingDeleteAllAlert = false
+    @StateObject private var storageManager = LeagueStorageManager.shared
     
-    // Sample save data for the three slots
+    // Remove sample data - will use real saved leagues
     @State private var saveSlots: [SaveSlot] = [
         SaveSlot(
             slotNumber: 1,
@@ -73,6 +75,13 @@ struct LoadLeagueView: View {
             .navigationTitle("Load League")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Delete All", role: .destructive) {
+                        showingDeleteAllAlert = true
+                    }
+                    .disabled(storageManager.savedLeagues.isEmpty)
+                }
+                
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Cancel") {
                         dismiss()
@@ -88,28 +97,40 @@ struct LoadLeagueView: View {
         .alert("Delete Save", isPresented: $showingDeleteAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Delete", role: .destructive) {
-                if let slot = selectedSlotToDelete {
+                if let league = selectedLeagueToDelete {
+                    deleteLeague(league)
+                } else if let slot = selectedSlotToDelete {
                     deleteSaveSlot(slot)
                 }
             }
         } message: {
-            Text("Are you sure you want to delete this save? This action cannot be undone.")
+            if let league = selectedLeagueToDelete {
+                Text("Are you sure you want to delete '\(league.teamName)' league? This action cannot be undone.")
+            } else {
+                Text("Are you sure you want to delete this save? This action cannot be undone.")
+            }
         }
         .alert("Load League", isPresented: $showingLoadConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Load") {
-                if let slot = selectedSlotToLoad {
-                    loadLeague(slot)
+                if let league = selectedLeagueToLoad {
+                    loadLeague(league)
                 }
             }
         } message: {
-            if let slot = selectedSlotToLoad {
-                Text("Load '\(slot.leagueName ?? "Unknown League")' from Slot \(slot.slotNumber)?")
+            if let league = selectedLeagueToLoad {
+                Text("Load '\(league.teamName)' league?")
             }
         }
-        .sheet(isPresented: $showingCreateLeague) {
-            CreateLeagueView()
+        .alert("Delete All Saves", isPresented: $showingDeleteAllAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete All", role: .destructive) {
+                deleteAllLeagues()
+            }
+        } message: {
+            Text("Are you sure you want to delete ALL saved leagues? This will permanently delete \(storageManager.savedLeagues.count) leagues and cannot be undone.")
         }
+
     }
     
     // MARK: - Header Section
@@ -141,28 +162,170 @@ struct LoadLeagueView: View {
                 Image(systemName: "externaldrive.fill")
                     .foregroundColor(.green)
                     .symbolEffect(.variableColor, options: .repeat(.continuous))
-                Text("Save Slots")
+                Text("Saved Leagues")
                     .font(.headline)
                     .foregroundColor(.primary)
                 Spacer()
+                
+                Text("\(storageManager.savedLeagues.count)/10")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
             }
             .padding(.horizontal)
             
-            // Use List for proper swipe actions
-            List {
-                ForEach(saveSlots.indices, id: \.self) { index in
-                    saveSlotRow(saveSlots[index])
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+            if storageManager.savedLeagues.isEmpty {
+                // No saved leagues
+                VStack(spacing: 16) {
+                    Image(systemName: "folder")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+                    
+                    Text("No Saved Leagues")
+                        .font(.headline)
+                        .foregroundColor(.secondary)
+                    
+                    Text("Create a new league from the main menu")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                 }
+                .padding(.vertical, 60)
+                .frame(maxWidth: .infinity)
+            } else {
+                // Show saved leagues
+                List {
+                    ForEach(storageManager.savedLeagues) { league in
+                        savedLeagueRow(league)
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+                    }
+                }
+                .listStyle(PlainListStyle())
+                .frame(height: CGFloat(storageManager.savedLeagues.count * 140)) // Approximate height
+                .scrollDisabled(true)
             }
-            .listStyle(PlainListStyle())
-            .frame(height: CGFloat(saveSlots.count * 140)) // Approximate height
-            .scrollDisabled(true)
         }
         .padding()
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+    
+    private func savedLeagueRow(_ league: League) -> some View {
+        Button {
+            selectedLeagueToLoad = league
+            showingLoadConfirmation = true
+        } label: {
+            VStack(spacing: 12) {
+                // Top row: Last played date
+                HStack {
+                    Text("Slot \(league.saveSlotNumber ?? 0)")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.white.opacity(0.8))
+                        .shadow(color: .black.opacity(0.8), radius: 3, x: 1, y: 1)
+                    
+                    Spacer()
+                    
+                    Text(formatDate(league.lastPlayedDate))
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.8))
+                        .shadow(color: .black.opacity(0.8), radius: 3, x: 1, y: 1)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                
+                // Main content row: Logo, team info, record
+                HStack {
+                    // Team logo
+                    Group {
+                        if let customLogoData = league.customLogoData,
+                           let uiImage = UIImage(data: customLogoData) {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                        } else {
+                            Image(league.teamLogoName)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                        }
+                    }
+                    .frame(width: 50, height: 50)
+                    .shadow(color: .black.opacity(0.6), radius: 4, x: 2, y: 2)
+                    .padding(.leading, 16)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Pure Football League")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.9), radius: 3, x: 1, y: 1)
+                        
+                        Text(league.teamName)
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.9))
+                            .shadow(color: .black.opacity(0.8), radius: 3, x: 1, y: 1)
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(league.record)
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.9), radius: 3, x: 1, y: 1)
+                        
+                        Text("Record")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.8))
+                            .shadow(color: .black.opacity(0.8), radius: 3, x: 1, y: 1)
+                    }
+                    .padding(.trailing, 16)
+                }
+                
+                // Bottom row: Week info
+                HStack {
+                    Text(league.difficulty)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.white.opacity(0.9))
+                        .shadow(color: .black.opacity(0.8), radius: 3, x: 1, y: 1)
+                    
+                    Spacer()
+                    
+                    Text("Week \(league.currentWeek)")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.white.opacity(0.9))
+                        .shadow(color: .black.opacity(0.8), radius: 3, x: 1, y: 1)
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+            }
+            .frame(height: 120)
+            .frame(maxWidth: .infinity)
+            .background(
+                LinearGradient(
+                    colors: [
+                        Color(hex: TeamColorMapping.getColors(for: league.teamLogoName).primary),
+                        Color(hex: TeamColorMapping.getColors(for: league.teamLogoName).secondary)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(PlainButtonStyle())
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+                selectedLeagueToDelete = league
+                showingDeleteAlert = true
+            } label: {
+                Image(systemName: "trash")
+                    .font(.title2)
+            }
+            .tint(.red)
+        }
     }
     
     private func saveSlotRow(_ slot: SaveSlot) -> some View {
@@ -276,37 +439,8 @@ struct LoadLeagueView: View {
                 }
                 
             } else {
-                // Empty slot
-                Button {
-                    showingCreateLeague = true
-                } label: {
-                    VStack(spacing: 12) {
-                        Image(systemName: "plus.circle.dashed")
-                            .font(.system(size: 32))
-                            .foregroundColor(.secondary)
-                        
-                        Text("Slot \(slot.slotNumber) - Empty")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        
-                        Text("No saved league")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        
-                        HStack {
-                            Image(systemName: "plus")
-                            Text("Create New League")
-                            Spacer()
-                        }
-                        .padding()
-                        .foregroundColor(.blue)
-                        .background(.blue.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(PlainButtonStyle())
+                // Empty slot - no longer used since we're using real saved leagues
+                EmptyView()
             }
         }
     }
@@ -367,49 +501,61 @@ struct LoadLeagueView: View {
     
     // MARK: - Actions
     
-    private func loadLeague(_ slot: SaveSlot) {
-        // TODO: Implement actual league loading
-        alertMessage = "Loading '\(slot.leagueName ?? "Unknown League")' from Slot \(slot.slotNumber)..."
-        showingAlert = true
+    private func loadLeague(_ league: League) {
+        // Pass the league to the flow manager to open with full league data
+        CoreLeagueManager.shared.pendingLeague = ActiveLeague(
+            teamName: league.teamName,
+            logoName: league.teamLogoName,
+            customLogoData: league.customLogoData,
+            league: league
+        )
         
-        // Simulate loading delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            dismiss()
-        }
+        // Dismiss the view
+        dismiss()
+        
+        // The MainMenuView will detect the pending league and open the hub
     }
     
     private func deleteSaveSlot(_ slotNumber: Int) {
-        if let index = saveSlots.firstIndex(where: { $0.slotNumber == slotNumber }) {
-            saveSlots[index] = SaveSlot(
-                slotNumber: slotNumber,
-                leagueName: nil,
-                lastSaved: nil,
-                teamCount: 0,
-                currentSeason: 0,
-                currentWeek: 0,
-                isOccupied: false,
-                userTeam: nil,
-                record: nil,
-                playoffStatus: nil
-            )
+        do {
+            try storageManager.deleteLeague(at: slotNumber)
+            alertMessage = "League deleted successfully."
+        } catch {
+            alertMessage = "Failed to delete league: \(error.localizedDescription)"
         }
-        
-        alertMessage = "Save slot \(slotNumber) has been deleted."
         showingAlert = true
     }
     
-    private func createNewLeague(in slotNumber: Int) {
-        showingCreateLeague = true
+    private func deleteLeague(_ league: League) {
+        do {
+            try storageManager.deleteLeague(league)
+            alertMessage = "League '\(league.teamName)' deleted successfully."
+        } catch {
+            alertMessage = "Failed to delete league: \(error.localizedDescription)"
+        }
+        showingAlert = true
     }
     
+
+    
     private func showLoadConfirmation(for slot: SaveSlot) {
-        selectedSlotToLoad = slot
+        // This function is no longer used - we use savedLeagueRow instead
         showingLoadConfirmation = true
     }
     
     private func showDeleteConfirmation(for slotNumber: Int) {
         selectedSlotToDelete = slotNumber
         showingDeleteAlert = true
+    }
+    
+    private func deleteAllLeagues() {
+        do {
+            try storageManager.deleteAllLeagues()
+            alertMessage = "All leagues deleted successfully!"
+        } catch {
+            alertMessage = "Failed to delete all leagues: \(error.localizedDescription)"
+        }
+        showingAlert = true
     }
 }
 

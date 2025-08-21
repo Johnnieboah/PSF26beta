@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		690413B72E009C6B002CAF70 /* PSF26.icon in Resources */ = {isa = PBXBuildFile; fileRef = 690413B62E009C6B002CAF70 /* PSF26.icon */; };
+		69776A492E4352FB0028857D /* LeagueStatisticsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69776A482E4352FA0028857D /* LeagueStatisticsManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -32,6 +33,7 @@
 		690413972E009B93002CAF70 /* PSF26Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PSF26Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		690413A12E009B93002CAF70 /* PSF26UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PSF26UITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		690413B62E009C6B002CAF70 /* PSF26.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = PSF26.icon; sourceTree = "<group>"; };
+		69776A482E4352FA0028857D /* LeagueStatisticsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeagueStatisticsManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -85,6 +87,7 @@
 				690413A42E009B93002CAF70 /* PSF26UITests */,
 				690413B62E009C6B002CAF70 /* PSF26.icon */,
 				6904138B2E009B91002CAF70 /* Products */,
+				69776A482E4352FA0028857D /* LeagueStatisticsManager.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -201,6 +204,9 @@
 			);
 			mainGroup = 690413812E009B91002CAF70;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				69A5C8CE2E43389700DDF07C /* XCRemoteSwiftPackageReference "swift-algorithms" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6904138B2E009B91002CAF70 /* Products */;
 			projectDirPath = "";
@@ -243,6 +249,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				69776A492E4352FB0028857D /* LeagueStatisticsManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -403,6 +410,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = PSF26;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = PSF26/PSF26.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = XD4H8245F6;
@@ -413,6 +421,8 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = "gradient-background.png";
+				INFOPLIST_KEY_UIStatusBarHidden = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -437,6 +447,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = PSF26;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = PSF26/PSF26.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = XD4H8245F6;
@@ -447,6 +458,8 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = "gradient-background.png";
+				INFOPLIST_KEY_UIStatusBarHidden = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -585,6 +598,17 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		69A5C8CE2E43389700DDF07C /* XCRemoteSwiftPackageReference "swift-algorithms" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-algorithms.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.2.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = 690413822E009B91002CAF70 /* Project object */;
 }

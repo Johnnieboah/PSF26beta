@@ -466,13 +466,13 @@ struct SettingsView: View {
             Spacer()
             
             Stepper(
-                "\(value.wrappedValue) \(suffix)",
+                String(describing: value.wrappedValue) + " " + suffix,
                 value: value,
                 in: range
             )
             .labelsHidden()
             
-            Text("\(value.wrappedValue) \(suffix)")
+            Text(String(describing: value.wrappedValue) + " " + suffix)
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .foregroundColor(.blue)

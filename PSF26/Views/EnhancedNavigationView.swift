@@ -8,23 +8,24 @@ struct iOS26SwipeBackGesture: ViewModifier {
     @State private var isDragging = false
     
     func body(content: Content) -> some View {
-        content
-            .offset(x: dragOffset)
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        // Only allow rightward swipes
-                        if value.translation.width > 0 {
-                            isDragging = true
-                            // Apply resistance - make it harder to drag as you go further
-                            let resistance = min(value.translation.width / UIScreen.main.bounds.width, 0.4)
-                            dragOffset = value.translation.width * resistance
+        GeometryReader { geometry in
+            content
+                .offset(x: dragOffset)
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            // Only allow rightward swipes
+                            if value.translation.width > 0 {
+                                isDragging = true
+                                // Apply resistance - make it harder to drag as you go further
+                                let resistance = min(value.translation.width / geometry.size.width, 0.4)
+                                dragOffset = value.translation.width * resistance
+                            }
                         }
-                    }
-                    .onEnded { value in
-                        let translation = value.translation.width
-                        let velocity = value.velocity.width
-                        let screenWidth = UIScreen.main.bounds.width
+                        .onEnded { value in
+                            let translation = value.translation.width
+                            let velocity = value.velocity.width
+                            let screenWidth = geometry.size.width
                         
                         // Determine if we should dismiss based on translation distance or velocity
                         let shouldDismiss = translation > screenWidth * 0.25 || velocity > 800
@@ -46,10 +47,11 @@ struct iOS26SwipeBackGesture: ViewModifier {
                             }
                         }
                         
-                        isDragging = false
-                    }
-            )
-            .animation(.interactiveSpring(), value: dragOffset)
+                            isDragging = false
+                        }
+                )
+                .animation(.interactiveSpring(), value: dragOffset)
+        }
     }
 }
 

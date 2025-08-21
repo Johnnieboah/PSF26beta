@@ -1,0 +1,24 @@
+"/Users/jay/Documents/PSF26/PSF26/GameCenterManager.swift":
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/GameCenterManager.dia"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/GameCenterManager.o"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/GameCenterManager.swiftconstvalues"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/GameCenterManager.swiftdeps"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/GameCenterManager.d"
+"/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/DerivedSources/GeneratedAssetSymbols.swift":
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/GeneratedAssetSymbols.dia"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/GeneratedAssetSymbols.o"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/GeneratedAssetSymbols.d"
+"/Users/jay/Documents/PSF26/PSF26/Models/LeagueModels.swift":
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueModels.dia"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueModels.o"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueModels.d"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueModels.swiftdeps"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueModels.swiftconstvalues"
+"/Users/jay/Documents/PSF26/PSF26/Views/LeagueGameplayView.swift":
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueGameplayView.swiftdeps"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueGameplayView.dia"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueGameplayView.o"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueGameplayView.swiftconstvalues"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/LeagueGameplayView.d"

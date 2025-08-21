@@ -8,6 +8,7 @@ import Combine
 
 @MainActor
 class GameCenterManager: NSObject, ObservableObject {
+    static let shared = GameCenterManager()
     
     // MARK: - Published Properties
     @Published var isAuthenticated = false

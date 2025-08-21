@@ -113,51 +113,54 @@ struct CreateLeagueView: View {
         Button {
             createOwnerModeLeague()
         } label: {
+            let atl = Color(hex: TeamUIResolver.bannerHex(for: "Atlanta"))
+            let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Image(systemName: "person.fill")
                         .font(.system(size: 40))
-                        .foregroundColor(.green)
-                        .shadow(color: .black.opacity(0.3), radius: 2, x: 1, y: 1)
+                        .foregroundColor(.white)
+                        .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
                     
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Owner Mode")
                             .font(.headline)
                             .fontWeight(.bold)
-                            .foregroundColor(.primary)
+                            .foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.7), radius: 1.5, x: 0, y: 1)
                         
                         Text("Control one team as owner")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white.opacity(0.95))
+                            .shadow(color: .black.opacity(0.6), radius: 1, x: 0, y: 1)
                     }
                     
                     Spacer()
                     
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.green)
+                        .foregroundColor(.white)
+                        .shadow(color: .black.opacity(0.6), radius: 1, x: 0, y: 1)
                 }
                 
                 HStack(spacing: 16) {
-                    featureItem("Pick Team", "hand.point.up.fill")
-                    featureItem("Manage Roster", "person.3.fill")
-                    featureItem("Make Trades", "arrow.left.arrow.right")
+                    featureItemWhite("Pick Team", "hand.point.up.fill")
+                    featureItemWhite("Manage Roster", "person.3.fill")
+                    featureItemWhite("Make Trades", "arrow.left.arrow.right")
                 }
                 .padding(.top, 8)
             }
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .padding()
-            .background(
-                LinearGradient(
-                    colors: [.green.opacity(0.1), .blue.opacity(0.1)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                ),
-                in: RoundedRectangle(cornerRadius: 12)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(.green.opacity(0.3), lineWidth: 1)
-            )
+            .background(alignment: .center) {
+                shape
+                    .fill(Color.clear)
+                    .glassEffect(
+                        .regular.tint(atl).interactive(),
+                        in: shape
+                    )
+                    .shadow(color: atl.opacity(0.32), radius: 18, x: 0, y: 12)
+            }
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -247,52 +250,55 @@ struct CreateLeagueView: View {
                 showingModeSelection = true
             }
         } label: {
+            let ne = Color(hex: TeamUIResolver.bannerHex(for: "NewEngland"))
+            let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     Image("leaguelogo")
                         .resizable()
                         .scaledToFit()
                         .frame(width: 50, height: 50)
-                        .shadow(color: .black.opacity(0.3), radius: 2, x: 1, y: 1)
+                        .shadow(color: .black.opacity(0.6), radius: 2, x: 0, y: 1)
                     
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Default League")
                             .font(.headline)
                             .fontWeight(.bold)
-                            .foregroundColor(.primary)
+                            .foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.7), radius: 1.5, x: 0, y: 1)
                         
-                        Text("32 NFL teams, standard rules")
+                        Text("32 PFL teams, standard rules")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.white.opacity(0.95))
+                            .shadow(color: .black.opacity(0.6), radius: 1, x: 0, y: 1)
                     }
                     
                     Spacer()
                     
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(.blue)
+                        .foregroundColor(.white)
+                        .shadow(color: .black.opacity(0.6), radius: 1, x: 0, y: 1)
                 }
                 
                 HStack(spacing: 16) {
-                    featureItem("32 Teams", "person.3.fill")
-                    featureItem("Standard Rules", "list.bullet")
-                    featureItem("Quick Start", "bolt.fill")
+                    featureItemWhite("32 Teams", "person.3.fill")
+                    featureItemWhite("Standard Rules", "list.bullet")
+                    featureItemWhite("Quick Start", "bolt.fill")
                 }
                 .padding(.top, 8)
             }
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .padding()
-            .background(
-                LinearGradient(
-                    colors: [.blue.opacity(0.1), .green.opacity(0.1)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                ),
-                in: RoundedRectangle(cornerRadius: 12)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(.blue.opacity(0.3), lineWidth: 1)
-            )
+            .background(alignment: .center) {
+                shape
+                    .fill(Color.clear)
+                    .glassEffect(
+                        .regular.tint(ne).interactive(),
+                        in: shape
+                    )
+                    .shadow(color: ne.opacity(0.32), radius: 18, x: 0, y: 12)
+            }
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -363,6 +369,26 @@ struct CreateLeagueView: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
+    }
+
+    // White variant used on glass tinted tiles
+    private func featureItemWhite(_ title: String, _ systemImage: String, isDisabled: Bool = false) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.white)
+                .shadow(color: .black.opacity(0.6), radius: 1, x: 0, y: 1)
+            
+            Text(title)
+                .font(.caption2)
+                .fontWeight(.semibold)
+                .foregroundColor(.white)
+                .shadow(color: .black.opacity(0.6), radius: 1, x: 0, y: 1)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .opacity(isDisabled ? 0.6 : 1.0)
+        .saturation(isDisabled ? 0.2 : 1.0)
     }
     
     // MARK: - Actions

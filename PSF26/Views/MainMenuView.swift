@@ -1,5 +1,24 @@
 import SwiftUI
 
+struct ActiveLeague: Identifiable, Equatable {
+    let id = UUID()
+    let teamName: String
+    let logoName: String
+    let customLogoData: Data?
+    let league: League?
+    
+    init(teamName: String, logoName: String, customLogoData: Data?, league: League? = nil) {
+        self.teamName = teamName
+        self.logoName = logoName
+        self.customLogoData = customLogoData
+        self.league = league
+    }
+    
+    static func == (lhs: ActiveLeague, rhs: ActiveLeague) -> Bool {
+        return lhs.id == rhs.id
+    }
+}
+
 struct MainMenuView: View {
     @State private var logoOpacity = 0.0
     @State private var logoOffset: CGFloat = 0
@@ -11,6 +30,8 @@ struct MainMenuView: View {
     @State private var showingSettings = false
     @State private var showingCreateLeague = false
     @State private var showingLoadLeague = false
+    @State private var activeLeague: ActiveLeague? = nil
+    @StateObject private var coreLeagueManager = CoreLeagueManager.shared
     
     var body: some View {
         NavigationStack {
@@ -152,11 +173,48 @@ struct MainMenuView: View {
             .sheet(isPresented: $showingLoadLeague) {
                 LoadLeagueView()
             }
+            .fullScreenCover(item: $activeLeague) { activeLeague in
+                FadeInPresenting(style: .soft) {
+                    if let league = activeLeague.league {
+                        LeagueHubView(league: league)
+                    } else {
+                        LeagueHubView(
+                            teamName: activeLeague.teamName,
+                            teamLogoName: activeLeague.logoName,
+                            customLogoData: activeLeague.customLogoData
+                        )
+                    }
+                }
+            }
+            .onChange(of: coreLeagueManager.shouldDismissToHub) { _, shouldDismiss in
+                if shouldDismiss {
+                    guard activeLeague == nil else { return }
+                    activeLeague = coreLeagueManager.pendingLeague
+                    DispatchQueue.main.async {
+                        showingCreateLeague = false
+                        showingLoadLeague = false
+                        coreLeagueManager.reset()
+                    }
+                }
+            }
+            .onChange(of: coreLeagueManager.pendingLeague) { _, newLeague in
+                // Handle league loading from LoadLeagueView
+                if newLeague != nil && !coreLeagueManager.shouldDismissToHub {
+                    // Present first for seamless transition, then dismiss the load sheet beneath.
+                    guard activeLeague == nil else { return }
+                    activeLeague = newLeague
+                    DispatchQueue.main.async {
+                        showingLoadLeague = false
+                        coreLeagueManager.reset()
+                    }
+                }
+            }
         }
     }
-    
+
     private func logoWidth(geometry: GeometryProxy) -> CGFloat {
-        return min(geometry.size.width - 40, 500)
+        let width = geometry.size.width - 40
+        return max(200, min(width, 500)) // Ensure minimum width of 200 and maximum of 500
     }
     
     private func logoSize(scrollOffset: CGFloat, screenWidth: CGFloat) -> CGFloat {

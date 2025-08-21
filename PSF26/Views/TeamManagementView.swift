@@ -5,11 +5,18 @@ import PhotosUI
 struct TeamManagementView: View {
     let teamName: String
     let conference: String
+    let leagueId: UUID?
+    @StateObject private var coreLeagueManager = CoreLeagueManager.shared
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTab: ManagementTab = .roster
     @State private var team: TeamData
+    @State private var selectedPosition: String = "Overview"
+    @State private var refreshTrigger = UUID()
     @Namespace private var tabNamespace
     @Namespace private var glassNamespace
+    @State private var showStartAccessory: Bool = false
+    @State private var showStartAccessorySettings: Bool = false
+    
     
     enum ManagementTab: String, CaseIterable {
         case roster = "Roster"
@@ -25,31 +32,106 @@ struct TeamManagementView: View {
         }
     }
     
-    init(teamName: String, conference: String) {
+    init(teamName: String, conference: String, leagueId: UUID? = nil) {
         self.teamName = teamName
         self.conference = conference
-        self._team = State(initialValue: TeamData.createTeamFromData(name: teamName))
+        self.leagueId = leagueId
+        self._team = State(initialValue: TeamData.createTeamFromData(name: teamName, leagueId: leagueId))
     }
     
     var body: some View {
-        // Native TabView with Liquid Glass and iOS 26 Full-Screen Swipe Back
+        // Native TabView; toolbar configured for iOS 26 polish without changing layout
         TabView(selection: $selectedTab) {
-            // Roster Tab (with Overview as default)
-            ScrollView {
-                VStack(spacing: 0) {
-                    SimplifiedTeamHeaderView(team: team)
-                    
-                    VStack(spacing: 20) {
-                        RosterManagementView(team: $team)
+            // Roster Tab (with Overview as default) — add banner header and extend to top
+            OptimizedListRow(id: "roster-\(teamName)") {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Start League bubble directly under the logo/header (moved below header)
+                        SimplifiedTeamHeaderView(team: team)
+
+                        if showStartAccessory {
+                            HStack {
+                                Spacer()
+                                HStack(spacing: 12) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 18, weight: .semibold))
+                                    Text("Start league with \(team.displayName)?")
+                                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    Button {
+                                        startLeagueFromTeamManagement()
+                                    } label: {
+                                        Text("Yes").font(.headline).foregroundColor(.white)
+                                    }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(Color(hex: TeamColorMapping.getColors(for: team.logoName).secondary))
+                                    Button {
+                                        withAnimation(.spring()) { showStartAccessory = false }
+                                    } label: { Image(systemName: "xmark") }
+                                    .buttonStyle(.bordered)
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .fill(Color(hex: TeamColorMapping.getColors(for: team.logoName).primary))
+                                )
+                                .glassEffect(.regular.tint(Color(hex: TeamColorMapping.getColors(for: team.logoName).primary)).interactive())
+                                Spacer()
+                            }
+                            .padding(.top, 12)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                        } else {
+                            // Collapsed handle exactly under the header
+                            HStack {
+                                Spacer()
+                                Button {
+                                    withAnimation(.spring()) { showStartAccessory = true }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                        Text("Start League")
+                                    }
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                            .fill(Color(hex: TeamColorMapping.getColors(for: team.logoName).secondary))
+                                    )
+                                    .glassEffect(.regular.tint(Color(hex: TeamColorMapping.getColors(for: team.logoName).secondary)).interactive())
+                                }
+                                .buttonStyle(.plain)
+                                Spacer()
+                            }
+                            .padding(.top, 12)
+                        }
+                        
+
+                        VStack(spacing: 16) {
+                            // Positions-only browsing in TeamManagement: no Offense/Defense grouping
+                            RosterManagementView(
+                                team: $team,
+                                selectedPosition: $selectedPosition,
+                                leagueId: leagueId,
+                                includeAllChip: false,
+                                unitFilterMode: false,
+                                showSalaryInCells: true,
+                                embedInScrollView: false // parent already scrolls; avoid nested scroll view so chips receive taps
+                            )
+                            // Single Start League CTA at bottom of roster tab only when Overview is selected
+                            // (Removed inline toggle to keep the control only above header)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                        .padding(.bottom, 32)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 20)
-                    .padding(.bottom, 20)
+                    .scrollTargetLayout()
                 }
+                .scrollClipDisabled()
+                .scrollTargetBehavior(.viewAligned)
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .scrollClipDisabled()
-            .scrollTargetBehavior(.viewAligned)
-            .scrollBounceBehavior(.basedOnSize)
             .tabItem {
                 Image(systemName: "person.3.fill")
                 Text("Roster")
@@ -57,21 +139,22 @@ struct TeamManagementView: View {
             .tag(ManagementTab.roster)
             
             // Schedule Tab
-            ScrollView {
-                VStack(spacing: 0) {
-                    SimplifiedTeamHeaderView(team: team)
-                    
-                    VStack(spacing: 20) {
-                        SeasonScheduleView(team: team)
+            OptimizedListRow(id: "schedule-\(teamName)") {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        SimplifiedTeamHeaderView(team: team)
+                        
+                        VStack(spacing: 16) {
+                            SeasonScheduleView(team: team)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                        .padding(.bottom, 16)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 20)
-                    .padding(.bottom, 20)
+                    .scrollTargetLayout()
                 }
+                .scrollDisabled(true) // schedule grid is single view without scrolling
             }
-            .scrollClipDisabled()
-            .scrollTargetBehavior(.viewAligned)
-            .scrollBounceBehavior(.basedOnSize)
             .tabItem {
                 Image(systemName: "calendar.badge.clock")
                 Text("Schedule")
@@ -79,42 +162,153 @@ struct TeamManagementView: View {
             .tag(ManagementTab.schedule)
             
             // Settings Tab
-            ScrollView {
-                VStack(spacing: 0) {
-                    SimplifiedTeamHeaderView(team: team)
-                    
-                    VStack(spacing: 20) {
-                        LeagueSetupView(team: team)
+            OptimizedListRow(id: "settings-\(teamName)") {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        SimplifiedTeamHeaderView(team: team)
+                        // Start League bubble in settings area (under header, beside title row)
+                        if !showStartAccessorySettings {
+                            HStack {
+                                Spacer()
+                                Button {
+                                    withAnimation(.spring()) { showStartAccessorySettings = true }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                        Text("Start League")
+                                    }
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                            .fill(Color(hex: TeamColorMapping.getColors(for: team.logoName).secondary))
+                                    )
+                                    .glassEffect(.regular.tint(Color(hex: TeamColorMapping.getColors(for: team.logoName).secondary)).interactive())
+                                }
+                                .buttonStyle(.plain)
+                                Spacer()
+                            }
+                            .padding(.top, 12)
+                        }
+                        if showStartAccessorySettings {
+                            HStack {
+                                Spacer()
+                                HStack(spacing: 12) {
+                                    Image(systemName: "checkmark.circle.fill").font(.system(size: 18, weight: .semibold))
+                                    Text("Start league with \(team.displayName)?").font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    Button { startLeagueFromTeamManagement() } label: { Text("Yes").font(.headline).foregroundColor(.white) }
+                                        .buttonStyle(.borderedProminent)
+                                        .tint(Color(hex: TeamColorMapping.getColors(for: team.logoName).secondary))
+                                    Button { withAnimation(.spring()) { showStartAccessorySettings = false } } label: { Image(systemName: "xmark") }
+                                        .buttonStyle(.bordered)
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .fill(Color(hex: TeamColorMapping.getColors(for: team.logoName).primary))
+                                )
+                                .glassEffect(.regular.tint(Color(hex: TeamColorMapping.getColors(for: team.logoName).primary)).interactive())
+                                Spacer()
+                            }
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                        }
+                        
+                        VStack(spacing: 10) {
+                            LeagueSetupView(team: team)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.top, 10)
+                        .padding(.bottom, 10)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 20)
-                    .padding(.bottom, 20)
+                    .scrollTargetLayout()
                 }
+                .scrollClipDisabled()
+                .scrollTargetBehavior(.viewAligned)
+                .scrollBounceBehavior(.basedOnSize)
+                .liquidGlass(.subtle)
             }
-            .scrollClipDisabled()
-            .scrollTargetBehavior(.viewAligned)
-            .scrollBounceBehavior(.basedOnSize)
             .tabItem {
                 Image(systemName: "gearshape.fill")
                 Text("Settings")
             }
             .tag(ManagementTab.league)
         }
-        .navigationTitle(TeamData.getTeamDisplayName(teamName))
+        .modifier(iOS26TabBarEnhancements())
+        // Use default nav bar appearance with the team/city name
+        .navigationTitle(team.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(false)
-        .onAppear {
-            // Configure native iOS 26 Liquid Glass tab bar appearance
-            let appearance = UITabBarAppearance()
-            appearance.configureWithTransparentBackground()
-            appearance.backgroundColor = UIColor.clear
+        .toolbarBackground(.automatic, for: .navigationBar)
+        // Hub presentation is centralized in MainMenuView to avoid duplicate navigation updates.
+        // After pendingLeague is set by CoreLeagueManager, present the hub
+        // Remove local fullScreenCover; hub presentation is centralized via MainMenuView
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("MasterDataLoaded"))) { _ in
+            // Master data has finished loading - refresh empty cached data first
+            print("🔄 TeamManagementView: Master data loaded - checking if refresh needed for \(team.logoName)")
+            PlayerDataManager.shared.refreshEmptyCachedTeams()
             
-            // Apply Liquid Glass effect
-            UITabBar.appearance().standardAppearance = appearance
-            UITabBar.appearance().scrollEdgeAppearance = appearance
-            UITabBar.appearance().isTranslucent = true
+            // Also refresh team data if it's using sample data
+            if team.players.isEmpty || team.players.first?.firstName == "Sample" {
+                print("🔄 TeamManagementView: Refreshing team data for \(team.logoName)")
+                team = TeamData.createTeamFromData(name: teamName, leagueId: leagueId)
+            }
+        }
+
+    }
+
+}
+
+// MARK: - Private helpers
+private extension TeamManagementView {
+    func startLeagueFromTeamManagement() {
+        // Create default settings (mirror LeagueSetupView defaults)
+        let settings = LeagueSetupSettings(
+            difficulty: "Pro",
+            autoSave: true,
+            autoSetDepthChart: true,
+            autoFillTeam: false,
+            injuriesEnabled: true,
+            salaryCapEnabled: true,
+            gameSpeed: "Normal"
+        )
+
+        Task { @MainActor in
+            print("▶️ StartLeague pressed from TeamManagementView for \(team.logoName)")
+            await CoreLeagueManager.shared.startNewLeague(
+                teamName: team.name,
+                logoName: team.logoName,
+                customLogoData: nil,
+                settings: settings
+            )
         }
     }
+}
+
+// Local luminance helper for toolbar contrast
+@inline(__always)
+private func colorLuminance(hex: String) -> Double {
+    let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+    var int: UInt64 = 0
+    Scanner(string: cleaned).scanHexInt64(&int)
+    let r, g, b: Double
+    switch cleaned.count {
+    case 3:
+        r = Double((int >> 8) & 0xF) * 17.0 / 255.0
+        g = Double((int >> 4) & 0xF) * 17.0 / 255.0
+        b = Double(int & 0xF) * 17.0 / 255.0
+    case 6, 8:
+        let hasAlpha = cleaned.count == 8
+        let base = hasAlpha ? int & 0x00FFFFFF : int
+        r = Double((base >> 16) & 0xFF) / 255.0
+        g = Double((base >> 8) & 0xFF) / 255.0
+        b = Double(base & 0xFF) / 255.0
+    default:
+        r = 1; g = 1; b = 1
+    }
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
 // MARK: - Simplified Team Header View
@@ -127,9 +321,40 @@ struct SimplifiedTeamHeaderView: View {
             .padding(.vertical, 24)
             .padding(.top, 10)
             .background(
-                teamGradientBackground
+                teamSolidBackground
                     .ignoresSafeArea(.all)
             )
+    }
+    
+    // Prefer an explicit banner preference per team. If a team is marked "light",
+    // use its secondary color; if marked "dark", use its primary color. Otherwise,
+    // fallback to whichever is lighter by luminance. Central mapping lives in TeamUIResolver.
+    private func lightTeamColorHex() -> String {
+        TeamUIResolver.bannerHex(for: team.logoName)
+    }
+
+    private func luminance(hex: String) -> Double {
+        let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: cleaned).scanHexInt64(&int)
+        let r, g, b: Double
+        switch cleaned.count {
+        case 3:
+            r = Double((int >> 8) & 0xF) * 17.0 / 255.0
+            g = Double((int >> 4) & 0xF) * 17.0 / 255.0
+            b = Double(int & 0xF) * 17.0 / 255.0
+        case 6, 8:
+            // if 8, assume AARRGGBB and ignore alpha
+            let hasAlpha = cleaned.count == 8
+            let base = hasAlpha ? int & 0x00FFFFFF : int
+            r = Double((base >> 16) & 0xFF) / 255.0
+            g = Double((base >> 8) & 0xFF) / 255.0
+            b = Double(base & 0xFF) / 255.0
+        default:
+            r = 1; g = 1; b = 1
+        }
+        // sRGB perceived luminance
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
     }
     
     private var headerContent: some View {
@@ -140,25 +365,31 @@ struct SimplifiedTeamHeaderView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 100, height: 100)
-                .shadow(color: .black.opacity(0.4), radius: 10, x: 0, y: 5)
+                // Keep a modest shadow in the header per design
+                .shadow(color: .black.opacity(0.35), radius: 6, x: 0, y: 3)
+                .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
             
             Spacer()
         }
         .padding(.horizontal, 20)
     }
     
-    private var teamGradientBackground: some View {
-        GeometryReader { geometry in
-            LinearGradient(
-                gradient: Gradient(stops: [
-                    .init(color: Color(hex: team.primaryColor), location: 0.0),
-                    .init(color: Color(hex: team.secondaryColor), location: 1.0)
-                ]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .frame(width: geometry.size.width + 100)
-            .offset(x: -50)
+    private var teamSolidBackground: some View {
+        GeometryReader { proxy in
+            // Single light team color (identity-aware)
+            let base = Color(hex: lightTeamColorHex())
+            Rectangle()
+                .fill(base)
+                // Subtle multiply pass to enrich saturation without turning it into a gradient
+                .overlay(
+                    Rectangle()
+                        .fill(base)
+                        .opacity(0.10)
+                        .blendMode(.multiply)
+                )
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipped()
+                .saturation(1.15) // small global boost for more punch
         }
     }
 }
@@ -169,11 +400,24 @@ struct TeamData {
     let logoName: String
     let primaryColor: String
     let secondaryColor: String
+    var customDisplayName: String? = nil
     var players: [PlayerData]
     var schedule: [GameData]
     var leagueSettings: LeagueSettings
     
-    static func createTeamFromData(name: String) -> TeamData {
+    var asLeagueTeam: LeagueTeam {
+        LeagueTeam.createFromTeamData(self)
+    }
+    
+    // Display name prioritizes a user-provided custom name; falls back to city-only name
+    var displayName: String {
+        if let custom = customDisplayName, !custom.trimmingCharacters(in: .whitespaces).isEmpty {
+            return custom
+        }
+        return TeamData.getTeamCityName(logoName)
+    }
+    
+    static func createTeamFromData(name: String, leagueId: UUID? = nil, isTrainingCamp: Bool = false) -> TeamData {
         let colors = TeamColorMapping.getColors(for: name)
         let masterLoader = MasterDataLoader.shared
         
@@ -182,31 +426,22 @@ struct TeamData {
             logoName: name,
             primaryColor: colors.primary,
             secondaryColor: colors.secondary,
-            players: loadRosterFromMasterData(teamName: name, masterLoader: masterLoader),
+            players: loadRosterFromMasterData(teamName: name, masterLoader: masterLoader, leagueId: leagueId, isTrainingCamp: isTrainingCamp),
             schedule: loadScheduleFromMasterData(teamName: name, masterLoader: masterLoader),
             leagueSettings: LeagueSettings.defaultSettings()
         )
     }
     
-    static func loadRosterFromMasterData(teamName: String, masterLoader: MasterDataLoader) -> [PlayerData] {
-        // Always try to load from master data first
-        let realPlayers = masterLoader.getPlayers(for: teamName)
+    static func loadRosterFromMasterData(teamName: String, masterLoader: MasterDataLoader, leagueId: UUID? = nil, isTrainingCamp: Bool = false) -> [PlayerData] {
+        // Phase 3: Use hybrid loading approach
+        let players = PlayerDataManager.shared.getPlayers(for: teamName, leagueId: leagueId)
         
-        if !realPlayers.isEmpty {
-            return realPlayers.map { player in
-                PlayerData(
-                    firstName: player.firstName,
-                    lastName: player.lastName,
-                    position: player.position,
-                    number: Int(player.jerseyNum) ?? 1,
-                    overall: player.overallInt,
-                    age: player.ageInt
-                )
-            }
+        if !players.isEmpty {
+            return players
         } else {
-            // Fallback to sample data only if no real data is available
+            // Final fallback to sample data only if no real data is available
             print("⚠️ No real data found for \(teamName), using sample data")
-            return generateSamplePlayers()
+            return generateSamplePlayers(isTrainingCamp: isTrainingCamp)
         }
     }
     
@@ -232,117 +467,96 @@ struct TeamData {
     }
     
     static func simplifyOpponentName(_ fullOpponentName: String) -> String {
-        // Convert full team names to short display names
+        // Convert full team names to city names only
         let teamNameMapping: [String: String] = [
-            "Kansas City Chiefs": "Chiefs",
-            "San Francisco 49ers": "49ers",
-            "Miami Dolphins": "Dolphins",
-            "Dallas Cowboys": "Cowboys",
-            "Chicago Bears": "Bears",
-            "Detroit Lions": "Lions",
-            "Green Bay Packers": "Packers",
-            "Minnesota Vikings": "Vikings",
-            "New York Giants": "Giants",
-            "Philadelphia Eagles": "Eagles",
-            "Washington Commanders": "Commanders",
-            "Atlanta Falcons": "Falcons",
-            "Carolina Panthers": "Panthers",
-            "New Orleans Saints": "Saints",
-            "Tampa Bay Buccaneers": "Buccaneers",
-            "Arizona Cardinals": "Cardinals",
-            "Los Angeles Rams": "Rams",
-            "Seattle Seahawks": "Seahawks",
-            "Baltimore Ravens": "Ravens",
-            "Cincinnati Bengals": "Bengals",
-            "Cleveland Browns": "Browns",
-            "Pittsburgh Steelers": "Steelers",
-            "Buffalo Bills": "Bills",
-            "New England Patriots": "Patriots",
-            "New York Jets": "Jets",
-            "Houston Texans": "Texans",
-            "Indianapolis Colts": "Colts",
-            "Jacksonville Jaguars": "Jaguars",
-            "Tennessee Titans": "Titans",
-            "Denver Broncos": "Broncos",
-            "Las Vegas Raiders": "Raiders",
-            "Los Angeles Chargers": "Chargers"
+            "Kansas City Chiefs": "Kansas City",
+            "San Francisco 49ers": "San Francisco",
+            "Miami Dolphins": "Miami",
+            "Dallas Cowboys": "Dallas",
+            "Chicago Bears": "Chicago",
+            "Detroit Lions": "Detroit",
+            "Green Bay Packers": "Green Bay",
+            "Minnesota Vikings": "Minnesota",
+            "New York Giants": "New York",
+            "Philadelphia Eagles": "Philadelphia",
+            "Washington Commanders": "Washington",
+            "Atlanta Falcons": "Atlanta",
+            "Carolina Panthers": "Carolina",
+            "New Orleans Saints": "New Orleans",
+            "Tampa Bay Buccaneers": "Tampa Bay",
+            "Arizona Cardinals": "Arizona",
+            "Los Angeles Rams": "Los Angeles",
+            "Seattle Seahawks": "Seattle",
+            "Baltimore Ravens": "Baltimore",
+            "Cincinnati Bengals": "Cincinnati",
+            "Cleveland Browns": "Cleveland",
+            "Pittsburgh Steelers": "Pittsburgh",
+            "Buffalo Bills": "Buffalo",
+            "New England Patriots": "New England",
+            "New York Jets": "New York",
+            "Houston Texans": "Houston",
+            "Indianapolis Colts": "Indianapolis",
+            "Jacksonville Jaguars": "Jacksonville",
+            "Tennessee Titans": "Tennessee",
+            "Denver Broncos": "Denver",
+            "Las Vegas Raiders": "Las Vegas",
+            "Los Angeles Chargers": "Los Angeles"
         ]
         
         return teamNameMapping[fullOpponentName] ?? fullOpponentName
     }
     
     static func getGameTime(for week: Int) -> String {
-        let gameTimes = [
+        let timeslots = [
             "1:00 PM", "1:00 PM", "4:05 PM", "4:25 PM",
             "8:15 PM", "8:20 PM", "7:00 PM"
         ]
         
-        // Different time slots for different weeks to make it realistic
-        switch week {
-        case 1...4:
-            return ["1:00 PM", "4:05 PM", "8:15 PM"].randomElement() ?? "1:00 PM"
-        case 5...8:
-            return ["1:00 PM", "4:25 PM", "8:20 PM"].randomElement() ?? "1:00 PM"
-        case 9...13:
-            return ["1:00 PM", "4:05 PM", "7:00 PM"].randomElement() ?? "1:00 PM"
-        case 14...17:
-            return ["1:00 PM", "4:25 PM", "8:15 PM"].randomElement() ?? "1:00 PM"
-        default:
-            return "1:00 PM"
-        }
+        // Generate deterministic time based on week number
+        let timeIndex = (week - 1) % timeslots.count
+        return timeslots[timeIndex]
     }
     
     static func getTeamDisplayName(_ teamName: String) -> String {
+        return getTeamCityName(teamName)
+    }
+    
+    static func getTeamCityName(_ teamName: String) -> String {
         switch teamName {
-        case "Chicago": return "Chicago Bears"
-        case "Detroit": return "Detroit Lions"
-        case "GreenBay": return "Green Bay Packers"
-        case "Minnesota": return "Minnesota Vikings"
-        case "Dallas": return "Dallas Cowboys"
-        case "NYN": return "New York Giants"
-        case "Philadelphia": return "Philadelphia Eagles"
-        case "Washington": return "Washington Commanders"
-        case "Atlanta": return "Atlanta Falcons"
-        case "Carolina": return "Carolina Panthers"
-        case "NewOrleans": return "New Orleans Saints"
-        case "TampaBay": return "Tampa Bay Buccaneers"
-        case "Arizona": return "Arizona Cardinals"
-        case "LAN": return "Los Angeles Rams"
-        case "SanFrancisco": return "San Francisco 49ers"
-        case "Seattle": return "Seattle Seahawks"
-        case "Baltimore": return "Baltimore Ravens"
-        case "Cincinnati": return "Cincinnati Bengals"
-        case "Cleveland": return "Cleveland Browns"
-        case "Pittsburgh": return "Pittsburgh Steelers"
-        case "Buffalo": return "Buffalo Bills"
-        case "Miami": return "Miami Dolphins"
-        case "NewEngland": return "New England Patriots"
-        case "NYA": return "New York Jets"
-        case "Houston": return "Houston Texans"
-        case "Indianapolis": return "Indianapolis Colts"
-        case "Jacksonville": return "Jacksonville Jaguars"
-        case "Tennessee": return "Tennessee Titans"
-        case "Denver": return "Denver Broncos"
-        case "KansasCity": return "Kansas City Chiefs"
-        case "LasVegas": return "Las Vegas Raiders"
-        case "LAA": return "Los Angeles Chargers"
+        case "Chicago": return "Chicago"
+        case "Detroit": return "Detroit"
+        case "GreenBay": return "Green Bay"
+        case "Minnesota": return "Minnesota"
+        case "Dallas": return "Dallas"
+        case "NYN": return "New York"
+        case "Philadelphia": return "Philadelphia"
+        case "Washington": return "Washington"
+        case "Atlanta": return "Atlanta"
+        case "Carolina": return "Carolina"
+        case "NewOrleans": return "New Orleans"
+        case "TampaBay": return "Tampa Bay"
+        case "Arizona": return "Arizona"
+        case "LAN": return "Los Angeles"
+        case "SanFrancisco": return "San Francisco"
+        case "Seattle": return "Seattle"
+        case "Baltimore": return "Baltimore"
+        case "Cincinnati": return "Cincinnati"
+        case "Cleveland": return "Cleveland"
+        case "Pittsburgh": return "Pittsburgh"
+        case "Buffalo": return "Buffalo"
+        case "Miami": return "Miami"
+        case "NewEngland": return "New England"
+        case "NYA": return "New York"
+        case "Houston": return "Houston"
+        case "Indianapolis": return "Indianapolis"
+        case "Jacksonville": return "Jacksonville"
+        case "Tennessee": return "Tennessee"
+        case "Denver": return "Denver"
+        case "KansasCity": return "Kansas City"
+        case "LasVegas": return "Las Vegas"
+        case "LAA": return "Los Angeles"
         default: return teamName
         }
-    }
-}
-
-// MARK: - Player Data Model
-struct PlayerData: Identifiable {
-    let id = UUID()
-    let firstName: String
-    let lastName: String
-    let position: String
-    let number: Int
-    let overall: Int
-    let age: Int
-    
-    var fullName: String {
-        "\(firstName) \(lastName)"
     }
 }
 
@@ -354,6 +568,24 @@ struct GameData: Identifiable {
     let isHome: Bool
     let date: String
     let time: String
+    var homeScore: Int?
+    var awayScore: Int?
+    var isCompleted: Bool = false
+    
+    var userTeamScore: Int? {
+        guard let homeScore = homeScore, let awayScore = awayScore else { return nil }
+        return isHome ? homeScore : awayScore
+    }
+    
+    var opponentScore: Int? {
+        guard let homeScore = homeScore, let awayScore = awayScore else { return nil }
+        return isHome ? awayScore : homeScore
+    }
+    
+    var userTeamWon: Bool? {
+        guard let userScore = userTeamScore, let oppScore = opponentScore else { return nil }
+        return userScore > oppScore
+    }
 }
 
 // MARK: - League Settings Model
@@ -375,8 +607,11 @@ struct LeagueSettings {
     }
 }
 
-// MARK: - 1. Roster Management View (Updated)
-struct RosterManagementView: View {
+// MARK: - 1. Roster Management View (Extracted to RosterManagementView.swift)
+// RosterManagementView is now in its own file for better organization
+
+// MARK: - Player Row View (Legacy - being replaced with OptimizedPlayerRow)
+struct PlayerRowView: View {
     @Binding var team: TeamData
     @State private var selectedPosition: String = "Overview"
     @StateObject private var masterDataLoader = MasterDataLoader.shared
@@ -418,7 +653,12 @@ struct RosterManagementView: View {
         if selectedPosition == "Overview" {
             return [] // Return empty for overview - we'll show the overview cards instead
         } else {
-            return playersToUse.filter { $0.position == selectedPosition }.sorted { $0.overall > $1.overall }
+            return playersToUse.filter { $0.position == selectedPosition }.sorted { 
+                if $0.overall != $1.overall {
+                    return $0.overall > $1.overall
+                }
+                return $0.fullName < $1.fullName // Stable tie-breaker
+            }
         }
     }
     
@@ -440,107 +680,443 @@ struct RosterManagementView: View {
     }
     
     private var rosterHeader: some View {
-        HStack {
-            Image(systemName: selectedPosition == "Overview" ? "chart.bar.fill" : "person.3.fill")
-                .font(.title2)
-                .foregroundColor(.primary)
-            
-            Text(selectedPosition == "Overview" ? "Team Overview" : "Team Roster")
+        HStack(spacing: 12) {
+            Spacer(minLength: 0)
+
+            Text("Team Overview")
                 .font(.title2)
                 .fontWeight(.bold)
                 .foregroundColor(.primary)
-            
-            Spacer()
-            
-            if masterDataLoader.isLoading {
-                HStack(spacing: 8) {
-                    ProgressView()
-                        .scaleEffect(0.8)
-                    Text("Loading...")
+
+            Menu {
+                ForEach(positions, id: \.self) { position in
+                    Button {
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
+                            selectedPosition = position
+                        }
+                    } label: {
+                        HStack {
+                            Text(position)
+                            if selectedPosition == position {
+                                Spacer()
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Text(selectedPosition)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    Image(systemName: "chevron.down")
                         .font(.caption)
-                        .foregroundColor(.secondary)
                 }
-            } else {
-                VStack(alignment: .trailing, spacing: 2) {
-                    if selectedPosition == "Overview" {
-                        Text("Team Stats")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    } else {
-                        Text("\(filteredPlayers.count) Players")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    if masterDataLoader.isDataLoaded {
-                        Text("Real Data")
-                            .font(.caption2)
-                            .foregroundColor(.green)
-                            .fontWeight(.medium)
-                    }
-                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color(.systemGray6))
+                )
             }
+            .buttonStyle(.plain)
+
+            Spacer(minLength: 0)
         }
     }
     
     private var teamOverviewContent: some View {
         let teamPlayers = getTeamPlayers()
-        let teamOveralls = calculateTeamOveralls(players: teamPlayers)
+        let teamOveralls = calculateTeamOverallsWithCache(players: teamPlayers, leagueId: nil)
         let topPlayers = getTopPlayers(players: teamPlayers)
         
+        // Debug logging for team overalls
+        let _ = print(" \(team.name) Enhanced Overalls - Offense: \(teamOveralls.offense), Defense: \(teamOveralls.defense), Overall: \(teamOveralls.overall)")
+        
         return VStack(alignment: .leading, spacing: 24) {
-            // Team Overalls Section
+            // Team Overalls Section (title now centered and renamed inside the card)
             TeamOverallsCard(
                 teamOveralls: teamOveralls,
                 teamColor: team.primaryColor
             )
-            
+
             // Top Players Section
             TopPlayersCard(
                 players: topPlayers,
                 teamColor: team.primaryColor
             )
             
-            // Team Stats Section
-            TeamStatsCard(
-                playerCount: teamPlayers.count,
-                scheduleCount: team.schedule.count,
-                teamColor: team.primaryColor
-            )
+            // Removed Team Stats bubble entirely per request
         }
     }
     
+    // MARK: - Phase 6: Updated to use hybrid data loading  
     private func getTeamPlayers() -> [PlayerData] {
-        let realPlayers = masterDataLoader.getPlayers(for: team.logoName)
+        // Use balanced players for team selection to ensure accurate roster display
+        let players = PlayerDataManager.shared.getBalancedPlayersForTeamSelection(for: team.logoName)
         
-        if !realPlayers.isEmpty {
-            return realPlayers.map { player in
-                PlayerData(
-                    firstName: player.firstName,
-                    lastName: player.lastName,
-                    position: player.position,
-                    number: Int(player.jerseyNum) ?? 1,
-                    overall: player.overallInt,
-                    age: player.ageInt
-                )
+        if !players.isEmpty {
+            // Log the actual player count and verify consistency
+            print("👥 📊 TeamManagementView: \(team.logoName) displaying \(players.count) players")
+            if players.count == 60 {
+                print("👥 ✅ TeamManagementView: \(team.logoName) has exactly 60 players as expected")
+            } else {
+                print("👥 ⚠️ TeamManagementView: \(team.logoName) has \(players.count) players, expected 60")
             }
+            return players
         } else {
+            // Final fallback to original team data
+            print("👥 ⚠️ TeamManagementView: Falling back to original team data for \(team.logoName)")
             return team.players
         }
     }
     
-    private func calculateTeamOveralls(players: [PlayerData]) -> (offense: Int, defense: Int, overall: Int) {
+    private func calculateTeamOverallsWithCache(players: [PlayerData], leagueId: UUID?) -> (offense: Int, defense: Int, overall: Int) {
+        // For team selection (no league context), check cache first to ensure consistency
+        if leagueId == nil {
+            if let cachedRatings = PlayerDataManager.shared.getCachedTeamOverallRatings(for: team.logoName) {
+                print("📊 📋 Using cached team overall ratings for \(team.logoName): O:\(cachedRatings.offense) D:\(cachedRatings.defense) Overall:\(cachedRatings.overall)")
+                return cachedRatings
+            }
+        }
+        
         let offensivePositions = ["QB", "RB", "FB", "WR", "TE", "LT", "LG", "C", "RG", "RT"]
         let defensivePositions = ["MLB", "ROLB", "LOLB", "EDGE", "DE", "DT", "CB", "SS", "FS"]
         
         let offensivePlayers = players.filter { offensivePositions.contains($0.position) }
         let defensivePlayers = players.filter { defensivePositions.contains($0.position) }
         
-        let offenseOverall = offensivePlayers.isEmpty ? 0 : offensivePlayers.map { $0.overall }.reduce(0, +) / offensivePlayers.count
-        let defenseOverall = defensivePlayers.isEmpty ? 0 : defensivePlayers.map { $0.overall }.reduce(0, +) / defensivePlayers.count
-        let teamOverall = players.isEmpty ? 0 : players.map { $0.overall }.reduce(0, +) / players.count
+        // Calculate raw unit ratings first
+        let rawOffenseRating = calculateEnhancedUnitRating(players: offensivePlayers, isOffense: true)
+        let rawDefenseRating = calculateEnhancedUnitRating(players: defensivePlayers, isOffense: false)
         
-        return (offenseOverall, defenseOverall, teamOverall)
+        // Apply consistent normalization to both unit ratings to bring them to realistic ranges
+        let offenseOverall = normalizeUnitRating(Double(rawOffenseRating), players: offensivePlayers, teamName: team.logoName)
+        let defenseOverall = normalizeUnitRating(Double(rawDefenseRating), players: defensivePlayers, teamName: team.logoName)
+        
+        // Calculate special teams rating
+        let specialTeamsPlayers = players.filter { ["K", "P"].contains($0.position) }
+        let specialTeamsRating = calculateSpecialTeamsRating(players: specialTeamsPlayers)
+        
+        // Team overall is now a logical combination of the unit ratings
+        // Weight the units (Offense: 45%, Defense: 45%, Special Teams: 10%)
+        let rawTeamRating = (Double(offenseOverall) * 0.45) + (Double(defenseOverall) * 0.45) + (specialTeamsRating * 0.10)
+        
+        // Minor adjustment for team overall (should be close to weighted average)
+        let teamOverall = Int(round(rawTeamRating))
+        
+        let finalRatings = (offenseOverall, defenseOverall, teamOverall)
+        
+        // Cache the ratings for team selection to ensure consistency
+        if leagueId == nil {
+            PlayerDataManager.shared.cacheTeamOverallRatings(for: team.logoName, ratings: finalRatings)
+        }
+        
+        return finalRatings
+    }
+    
+    /// Normalizes unit ratings (offense/defense) to realistic NFL ranges with increased variance
+    private func normalizeUnitRating(_ rawRating: Double, players: [PlayerData], teamName: String) -> Int {
+        // Expanded range for more variance (70-95 instead of 75-95)
+        let minUnitRating = 70.0
+        let maxUnitRating = 95.0
+        
+        // Calculate depth and quality factors for this unit
+        let sortedPlayers = players.sorted { $0.overall > $1.overall }
+        let topPlayers = Array(sortedPlayers.prefix(min(8, sortedPlayers.count))) // Top 8 for unit
+        let topPlayerAverage = topPlayers.isEmpty ? rawRating : Double(topPlayers.map { $0.overall }.reduce(0, +)) / Double(topPlayers.count)
+        
+        // More aggressive combination to increase variance
+        let enhancedRating = (rawRating * 0.6) + (topPlayerAverage * 0.4)
+        
+        // Apply team-specific adjustments to create proper variance
+        let teamAdjustment = getTeamStrengthAdjustment(teamName: teamName)
+        let adjustedRating = enhancedRating + teamAdjustment
+        
+        // Add variance amplification based on team strength
+        let strengthMultiplier = calculateStrengthMultiplier(enhancedRating: adjustedRating)
+        let amplifiedRating = adjustedRating * strengthMultiplier
+        
+        // Wider normalization range for more spread
+        let normalizedValue = (amplifiedRating - 60.0) / 35.0 // Wider range for more variance
+        let clampedValue = max(0.0, min(1.0, normalizedValue))
+        
+        let finalRating = minUnitRating + (clampedValue * (maxUnitRating - minUnitRating))
+        
+        return Int(round(finalRating))
+    }
+    
+    /// Calculates a strength multiplier to amplify differences between good and bad teams
+    private func calculateStrengthMultiplier(enhancedRating: Double) -> Double {
+        // Amplify the differences - make good teams better and bad teams worse
+        if enhancedRating >= 85 {
+            return 1.15  // Elite teams get a boost
+        } else if enhancedRating >= 80 {
+            return 1.08  // Good teams get moderate boost
+        } else if enhancedRating >= 75 {
+            return 1.02  // Average teams stay roughly the same
+        } else if enhancedRating >= 70 {
+            return 0.95  // Below average teams get slightly penalized
+        } else {
+            return 0.88  // Bad teams get more heavily penalized
+        }
+    }
+    
+    private func normalizeTeamRating(_ rawRating: Double, allPlayers: [PlayerData]) -> Int {
+        // Optimized for 60-player rosters - calculate team depth and talent variance
+        let sortedPlayers = allPlayers.sorted { $0.overall > $1.overall }
+        
+        // Adjusted for 60-player rosters: use more starters/key players (top 28 instead of 22)
+        let topPlayersCount = min(28, sortedPlayers.count) // Increased for 60-player rosters
+        let topPlayers = Array(sortedPlayers.prefix(topPlayersCount))
+        
+        // Calculate additional factors optimized for 60-player rosters
+        let topPlayerAverage = topPlayers.isEmpty ? rawRating : Double(topPlayers.map { $0.overall }.reduce(0, +)) / Double(topPlayers.count)
+        let depthQuality = calculateDepthQuality60Player(allPlayers: allPlayers)
+        let talentVariance = calculateTalentVariance60Player(allPlayers: allPlayers)
+        
+        // Adjusted weights for 60-player rosters - emphasize top talent more due to smaller roster
+        let enhancedRating = (rawRating * 0.45) + (topPlayerAverage * 0.40) + (depthQuality * 0.10) + (talentVariance * 0.05)
+        
+        // Apply team-specific adjustments based on recent performance and known strengths
+        let teamAdjustment = getTeamStrengthAdjustment(teamName: team.logoName)
+        let finalEnhancedRating = enhancedRating + teamAdjustment
+        
+        // Adjusted range mapping for 60-player rosters - raised to realistic NFL levels
+        let minRating = 78.0  // Raised floor to realistic NFL minimum
+        let maxRating = 94.0  // Raised ceiling to allow elite teams to shine
+        let normalizedValue = (finalEnhancedRating - 60.0) / 30.0 // Adjusted base and range for higher ratings
+        let clampedValue = max(0.0, min(1.0, normalizedValue))
+        
+        let finalRating = minRating + (clampedValue * (maxRating - minRating))
+        
+        return Int(round(finalRating))
+    }
+    
+    private func getTeamStrengthAdjustment(teamName: String) -> Double {
+        // Enhanced team-specific adjustments with increased variance to spread teams out
+        // More aggressive adjustments to prevent clustering in the middle
+        switch teamName {
+        // Elite Tier - Super Bowl Champions & Perennial Contenders (88-95 range)
+        case "Philadelphia": return 12.0  // Super Bowl winners - elite across the board
+        case "KansasCity": return 11.0    // Mahomes + championship pedigree
+        case "Buffalo": return 10.0      // Josh Allen + consistently elite
+        case "SanFrancisco": return 9.5  // Elite roster construction
+        
+        // Very Strong Tier - Playoff Contenders (85-89 range)
+        case "Baltimore": return 8.5     // Lamar + strong defense
+        case "Cincinnati": return 8.0    // Burrow + elite receiving corps
+        case "Miami": return 7.0         // High-powered offense
+        case "Dallas": return 6.5        // Talented but inconsistent
+        case "Detroit": return 6.0       // Rising with good coaching
+        
+        // Good Tier - Solid Teams (82-85 range)
+        case "GreenBay": return 5.0      // Solid with good QB play
+        case "Seattle": return 4.5       // Consistent playoff team
+        case "Minnesota": return 4.0     // Good roster, coaching
+        case "LAN": return 3.5           // Rams with McVay
+        case "Jacksonville": return 3.0  // Young team improving
+        
+        // Average Tier - Middle of Pack (78-82 range)
+        case "Pittsburgh": return 2.0    // Solid but aging
+        case "Cleveland": return 1.5     // Inconsistent talent
+        case "Indianapolis": return 0.5  // Rebuilding mode
+        case "Atlanta": return 0.0       // Middle of the pack
+        case "TampaBay": return -0.5     // Post-Brady transition
+        case "LasVegas": return -1.0     // Underachieving
+        case "LAA": return -1.5          // Chargers - talented but disappointing
+        case "NewOrleans": return -2.0   // Saints - aging roster
+        case "NYN": return -2.5          // Giants - limited talent
+        
+        // Below Average Tier - Rebuilding Teams (72-76 range)
+        case "Houston": return -3.5      // Young team, still building
+        case "Tennessee": return -4.0    // Down year, roster issues
+        case "NYA": return -4.5          // Jets - disappointing with talent
+        case "Denver": return -5.0       // Inconsistent, QB questions
+        case "NewEngland": return -5.5   // Post-Brady struggles
+        case "Washington": return -6.0   // Rebuilding, limited talent
+        
+        // Poor Tier - Bottom Feeders (68-72 range)
+        case "Chicago": return -7.0      // Rebuilding, picked 10th overall
+        case "Carolina": return -8.0     // Panthers - major rebuild
+        case "Arizona": return -9.0      // Cardinals - bottom tier roster
+        
+        default: return 0.0              // Unknown team
+        }
+    }
+    
+    private func calculateDepthQuality(allPlayers: [PlayerData]) -> Double {
+        // Measure how good the depth players are (positions 23-53)
+        let sortedPlayers = allPlayers.sorted { $0.overall > $1.overall }
+        let depthPlayers = Array(sortedPlayers.dropFirst(22))
+        
+        if depthPlayers.isEmpty { return 70.0 }
+        
+        let depthAverage = Double(depthPlayers.map { $0.overall }.reduce(0, +)) / Double(depthPlayers.count)
+        return depthAverage
+    }
+    
+    private func calculateTalentVariance(allPlayers: [PlayerData]) -> Double {
+        // Enhanced talent variance - rewards teams with elite players more heavily
+        let overalls = allPlayers.map { Double($0.overall) }
+        let average = overalls.reduce(0, +) / Double(overalls.count)
+        
+        // Count elite players (90+) and penalize teams with too many low-rated players
+        let elitePlayers = overalls.filter { $0 >= 90.0 }.count
+        let lowRatedPlayers = overalls.filter { $0 < 70.0 }.count
+        
+        // Calculate standard variance
+        let variance = overalls.reduce(0) { sum, overall in
+            sum + pow(overall - average, 2)
+        } / Double(overalls.count)
+        
+        // Enhanced bonus system
+        let baseVariance = sqrt(variance) * 2.0
+        let eliteBonus = Double(elitePlayers) * 1.5  // Big bonus for elite players
+        let lowRatedPenalty = Double(lowRatedPlayers) * -0.8  // Penalty for too many low players
+        
+        return baseVariance + eliteBonus + lowRatedPenalty
+    }
+    
+    /// Optimized depth quality calculation for 60-player rosters
+    private func calculateDepthQuality60Player(allPlayers: [PlayerData]) -> Double {
+        let sortedPlayers = allPlayers.sorted { $0.overall > $1.overall }
+        
+        // For 60-player rosters, consider depth in tiers
+        let tier1Count = min(12, sortedPlayers.count) // Elite starters
+        let tier2Count = min(20, sortedPlayers.count) // Quality depth
+        let tier3Count = min(35, sortedPlayers.count) // Serviceable players
+        
+        let tier1Players = Array(sortedPlayers.prefix(tier1Count))
+        let tier2Players = Array(sortedPlayers.prefix(tier2Count).dropFirst(tier1Count))
+        let tier3Players = Array(sortedPlayers.prefix(tier3Count).dropFirst(tier2Count))
+        
+        // Calculate weighted depth score with higher base values
+        let tier1Average = tier1Players.isEmpty ? 75.0 : Double(tier1Players.map { $0.overall }.reduce(0, +)) / Double(tier1Players.count)
+        let tier2Average = tier2Players.isEmpty ? 70.0 : Double(tier2Players.map { $0.overall }.reduce(0, +)) / Double(tier2Players.count)
+        let tier3Average = tier3Players.isEmpty ? 65.0 : Double(tier3Players.map { $0.overall }.reduce(0, +)) / Double(tier3Players.count)
+        
+        // Weight tiers appropriately for 60-player rosters
+        let depthScore = (tier1Average * 0.5) + (tier2Average * 0.3) + (tier3Average * 0.2)
+        
+        // Normalize to 0-15 range for higher impact
+        return (depthScore - 65.0) / 2.0
+    }
+    
+    /// Optimized talent variance calculation for 60-player rosters
+    private func calculateTalentVariance60Player(allPlayers: [PlayerData]) -> Double {
+        guard allPlayers.count >= 10 else { return 0.0 }
+        
+        let overalls = allPlayers.map { Double($0.overall) }
+        let average = overalls.reduce(0, +) / Double(overalls.count)
+        let variance = overalls.map { pow($0 - average, 2) }.reduce(0, +) / Double(overalls.count)
+        
+        // Count elite and low-rated players adjusted for 60-player rosters
+        let elitePlayers = allPlayers.filter { $0.overall >= 85 }.count
+        let lowRatedPlayers = allPlayers.filter { $0.overall <= 55 }.count
+        
+        // Adjusted bonus system for 60-player rosters
+        let baseVariance = sqrt(variance) * 1.8  // Slightly reduced impact
+        let eliteBonus = Double(elitePlayers) * 1.2  // Reduced bonus for elite players
+        let lowRatedPenalty = Double(lowRatedPlayers) * -0.6  // Reduced penalty
+        
+        return baseVariance + eliteBonus + lowRatedPenalty
+    }
+    
+    private func calculateEnhancedUnitRating(players: [PlayerData], isOffense: Bool) -> Int {
+        guard !players.isEmpty else { return 75 } // Raised base minimum
+        
+        // Enhanced position weights - QB impact increased significantly
+        let positionWeights: [String: Double] = isOffense ? [
+            "QB": 4.5,      // Quarterback has massive impact on team success
+            "LT": 2.5, "RT": 2.2,  // Tackle protection crucial
+            "WR": 2.0,      // Primary receivers
+            "RB": 1.8,      // Running game impact
+            "TE": 1.5,      // Versatile weapon
+            "C": 1.4,       // Center of the line
+            "LG": 1.2, "RG": 1.2,  // Guards
+            "FB": 0.9       // Fullback (less common)
+        ] : [
+            "CB": 2.5,      // Cover elite receivers
+            "EDGE": 2.3,    // Pass rush game-changer
+            "MLB": 2.0,     // Run defense/coverage anchor
+            "DE": 1.8,      // Pass rush/run stop
+            "SS": 1.6, "FS": 1.6,  // Safety coverage
+            "DT": 1.5,      // Interior rush/run stop
+            "ROLB": 1.4, "LOLB": 1.4  // Outside linebackers
+        ]
+        
+        // Group players by position and get top players at each position
+        let playersByPosition = Dictionary(grouping: players) { $0.position }
+        var weightedSum = 0.0
+        var totalWeight = 0.0
+        
+        for (position, positionPlayers) in playersByPosition {
+            let weight = positionWeights[position] ?? 1.0
+            let sortedPlayers = positionPlayers.sorted { $0.overall > $1.overall }
+            
+            // Optimized for 60-player rosters: consider appropriate depth per position
+            let depthToConsider = getOptimalDepthForPosition(position: position, availablePlayers: sortedPlayers.count)
+            let playersToConsider = Array(sortedPlayers.prefix(depthToConsider))
+            
+            // Adjusted depth weighting for 60-player rosters
+            for (index, player) in playersToConsider.enumerated() {
+                let depthMultiplier: Double
+                switch index {
+                case 0: depthMultiplier = 1.0      // Starter
+                case 1: depthMultiplier = 0.5      // Primary backup
+                case 2: depthMultiplier = 0.25     // Secondary backup
+                default: depthMultiplier = 0.1     // Deep depth
+                }
+                
+                let playerWeight = weight * depthMultiplier
+                weightedSum += Double(player.overall) * playerWeight
+                totalWeight += playerWeight
+            }
+        }
+        
+        let unitRating = totalWeight > 0 ? weightedSum / totalWeight : 75.0 // Raised fallback
+        return Int(round(unitRating))
+    }
+    
+    /// Determines optimal depth to consider for each position in 60-player rosters
+    private func getOptimalDepthForPosition(position: String, availablePlayers: Int) -> Int {
+        // Optimized depth consideration for 60-player rosters
+        let optimalDepth: Int
+        
+        switch position {
+        // Key positions need more depth consideration
+        case "QB": optimalDepth = min(3, availablePlayers)  // All QBs matter
+        case "RB": optimalDepth = min(4, availablePlayers)  // RB rotation important
+        case "WR": optimalDepth = min(5, availablePlayers)  // WR depth crucial
+        case "CB": optimalDepth = min(4, availablePlayers)  // CB depth important
+        
+        // Important positions with moderate depth
+        case "LT", "RT", "EDGE", "MLB": optimalDepth = min(3, availablePlayers)
+        
+        // Standard positions
+        case "TE", "DE", "DT", "SS", "FS": optimalDepth = min(3, availablePlayers)
+        
+        // Interior line and linebackers
+        case "C", "LG", "RG", "ROLB", "LOLB": optimalDepth = min(2, availablePlayers)
+        
+        // Specialists
+        case "K", "P", "FB": optimalDepth = min(1, availablePlayers)
+        
+        default: optimalDepth = min(2, availablePlayers)
+        }
+        
+        return max(1, optimalDepth) // Always consider at least the starter
+    }
+    
+    private func calculateSpecialTeamsRating(players: [PlayerData]) -> Double {
+        let kickers = players.filter { $0.position == "K" }
+        let punters = players.filter { $0.position == "P" }
+        
+        let kickerRating = kickers.isEmpty ? 78.0 : Double(kickers.max { $0.overall < $1.overall }?.overall ?? 78)
+        let punterRating = punters.isEmpty ? 78.0 : Double(punters.max { $0.overall < $1.overall }?.overall ?? 78)
+        
+        return (kickerRating + punterRating) / 2.0
     }
     
     private func getTopPlayers(players: [PlayerData]) -> [PlayerData] {
@@ -590,448 +1166,22 @@ struct RosterManagementView: View {
     private var playerList: some View {
         LazyVStack(spacing: 12) {
             ForEach(filteredPlayers) { player in
-                PlayerRowView(player: player, teamColor: "primary")
-            }
-        }
-    }
-}
-
-// MARK: - Player Row View
-struct PlayerRowView: View {
-    let player: PlayerData
-    let teamColor: String
-    
-    var body: some View {
-        playerRowContent
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(playerRowBackground)
-    }
-    
-    private var playerRowContent: some View {
-        HStack(spacing: 16) {
-            jerseyNumber
-            playerInfo
-            Spacer()
-            overallRating
-        }
-    }
-    
-    private var jerseyNumber: some View {
-        Text("#\(player.number)")
-            .font(.headline)
-            .fontWeight(.bold)
-            .foregroundColor(.white)
-            .frame(width: 40, height: 40)
-            .background(
-                Circle()
-                    .fill(.primary)
-            )
-            .shadow(color: .primary.opacity(0.3), radius: 2, x: 0, y: 1)
-    }
-    
-    private var playerInfo: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(player.fullName)
-                .font(.headline)
-                .fontWeight(.semibold)
-                .foregroundColor(.primary)
-            
-            HStack(spacing: 12) {
-                Text(player.position)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(.primary)
-                
-                Text("Age: \(player.age)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-        }
-    }
-    
-    private var overallRating: some View {
-        VStack(spacing: 2) {
-            Text("OVR")
-                .font(.caption2)
-                .foregroundColor(.secondary)
-            
-            Text("\(player.overall)")
-                .font(.title3)
-                .fontWeight(.bold)
-                .foregroundColor(ratingColor(player.overall))
-        }
-    }
-    
-    private var playerRowBackground: some View {
-        RoundedRectangle(cornerRadius: 12)
-            .fill(.ultraThinMaterial)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(.primary.opacity(0.2), lineWidth: 1)
-            )
-    }
-    
-    private func ratingColor(_ rating: Int) -> Color {
-        switch rating {
-        case 0..<70:
-            return .red
-        case 70..<90:
-            // Green gradient from light (70) to dark (89)
-            let normalizedRating = Double(rating - 70) / 19.0 // 0.0 to 1.0
-            return Color.green.opacity(0.6 + (normalizedRating * 0.4))
-        case 90...99:
-            // Gold gradient from bright (90) to dark (99)
-            let normalizedRating = Double(rating - 90) / 9.0 // 0.0 to 1.0
-            let hue = 0.15 // Gold hue
-            let saturation = 0.8 + (normalizedRating * 0.2) // 0.8 to 1.0
-            let brightness = 1.0 - (normalizedRating * 0.3) // 1.0 to 0.7
-            return Color(hue: hue, saturation: saturation, brightness: brightness)
-        default:
-            return .gray
-        }
-    }
-}
-
-// MARK: - 2. Season Schedule View
-struct SeasonScheduleView: View {
-    let team: TeamData
-    @State private var selectedWeek: Int?
-    @StateObject private var masterDataLoader = MasterDataLoader.shared
-    
-    private var scheduleGames: [GameData] {
-        let realSchedule = masterDataLoader.getSchedule(for: team.logoName)
-        
-        if !realSchedule.isEmpty {
-            // Create 18-week schedule including bye weeks (NFL has 18 weeks total, 17 games + 1 bye)
-            var allWeeks: [GameData] = []
-            let gamesByWeek = Dictionary(grouping: realSchedule) { $0.week }
-            
-            // NFL season spans weeks 1-18
-            for week in 1...18 {
-                if let games = gamesByWeek[week], let game = games.first {
-                    allWeeks.append(GameData(
-                        week: game.week,
-                        opponent: TeamData.simplifyOpponentName(game.opponent),
-                        isHome: game.isHome,
-                        date: "Week \(game.week)",
-                        time: TeamData.getGameTime(for: game.week)
-                    ))
-                } else {
-                    // Missing week - this is a bye week
-                    allWeeks.append(GameData(
-                        week: week,
-                        opponent: "BYE",
-                        isHome: true,
-                        date: "Week \(week)",
-                        time: ""
-                    ))
-                }
-            }
-            return allWeeks
-        } else {
-            // Fallback to sample data if no real schedule available
-            return team.schedule
-        }
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Image(systemName: "calendar.badge.clock")
-                    .font(.title2)
-                    .foregroundColor(Color(hex: team.primaryColor))
-                
-                Text("Season Schedule")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(scheduleGames.filter { $0.opponent != "BYE" }.count) Games")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    
-                    if masterDataLoader.isDataLoaded && !masterDataLoader.getSchedule(for: team.logoName).isEmpty {
-                        Text("Real Schedule")
-                            .font(.caption2)
-                            .foregroundColor(.green)
-                            .fontWeight(.medium)
-                    }
-                }
-            }
-            
-            LazyVStack(spacing: 12) {
-                ForEach(scheduleGames) { game in
-                    if game.opponent == "BYE" {
-                        ByeWeekRowView(
-                            week: game.week,
-                            teamColor: team.primaryColor,
-                            isSelected: selectedWeek == game.week
-                        ) {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                selectedWeek = selectedWeek == game.week ? nil : game.week
-                            }
-                        }
-                    } else {
-                        EnhancedGameRowView(
-                            game: game,
-                            teamColor: team.primaryColor,
-                            isSelected: selectedWeek == game.week
-                        ) {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                selectedWeek = selectedWeek == game.week ? nil : game.week
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Enhanced Game Row View (Updated)
-struct EnhancedGameRowView: View {
-    let game: GameData
-    let teamColor: String
-    let isSelected: Bool
-    let onTap: () -> Void
-    
-    private var opponentTeamName: String {
-        // Convert opponent display name back to short name for logo/color lookup
-        let opponentMapping: [String: String] = [
-            "Chiefs": "KansasCity",
-            "49ers": "SanFrancisco",
-            "Dolphins": "Miami",
-            "Cowboys": "Dallas",
-            "Bears": "Chicago",
-            "Lions": "Detroit",
-            "Packers": "GreenBay",
-            "Vikings": "Minnesota",
-            "Giants": "NYN",
-            "Eagles": "Philadelphia",
-            "Commanders": "Washington",
-            "Falcons": "Atlanta",
-            "Panthers": "Carolina",
-            "Saints": "NewOrleans",
-            "Buccaneers": "TampaBay",
-            "Cardinals": "Arizona",
-            "Rams": "LAN",
-            "Seahawks": "Seattle",
-            "Ravens": "Baltimore",
-            "Bengals": "Cincinnati",
-            "Browns": "Cleveland",
-            "Steelers": "Pittsburgh",
-            "Bills": "Buffalo",
-            "Patriots": "NewEngland",
-            "Jets": "NYA",
-            "Texans": "Houston",
-            "Colts": "Indianapolis",
-            "Jaguars": "Jacksonville",
-            "Titans": "Tennessee",
-            "Broncos": "Denver",
-            "Raiders": "LasVegas",
-            "Chargers": "LAA"
-        ]
-        
-        return opponentMapping[game.opponent] ?? game.opponent
-    }
-    
-    private var opponentColors: TeamColorMapping.TeamColors {
-        return TeamColorMapping.getColors(for: opponentTeamName)
-    }
-    
-    var body: some View {
-        Button(action: onTap) {
-            VStack(spacing: 0) {
-                // Main game content with opponent logo and gradient - no outer background
-                HStack(spacing: 16) {
-                    // Week number inside gradient
-                    Text("Week \(game.week)")
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
-                    
-                    Spacer()
-                    
-                    // Game status and opponent
-                    HStack(spacing: 12) {
-                        Text(game.isHome ? "vs" : "@")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(.white.opacity(0.8))
-                            .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
-                        
-                        // Opponent team logo
-                        Image(opponentTeamName)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 40, height: 40)
-                            .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 2)
-                        
-                        Text(game.opponent)
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(
-                    // Opponent team gradient background
-                    LinearGradient(
-                        gradient: Gradient(stops: [
-                            .init(color: Color(hex: opponentColors.primary), location: 0.0),
-                            .init(color: Color(hex: opponentColors.secondary), location: 1.0)
-                        ]),
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
+                OptimizedPlayerRow(
+                    player: OptimizedPlayerRow.PlayerRowData(
+                        id: "\(player.number)-\(player.lastName)",
+                        name: player.fullName,
+                        position: player.position,
+                        number: player.number,
+                        overall: player.overall,
+                        age: player.age
+                    ),
+                    teamColor: team.primaryColor,
+                    teamLogoName: nil,
+                    leagueId: nil,
+                    onPlayerUpdated: nil
                 )
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                
-                // Expanded content when selected
-                if isSelected {
-                    VStack(spacing: 8) {
-                        Divider()
-                            .padding(.horizontal, 20)
-                        
-                        HStack {
-                            Button("Simulate") {
-                                print("Simulating Week \(game.week)")
-                            }
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color(hex: teamColor))
-                            )
-                            
-                            Spacer()
-                            
-                            Button("View Details") {
-                                print("Viewing details for Week \(game.week)")
-                            }
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(Color(hex: teamColor))
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 8)
-                    }
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(.ultraThinMaterial)
-                    )
-                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                }
             }
-            .scaleEffect(isSelected ? 1.02 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSelected)
         }
-        .buttonStyle(.plain)
-        .sensoryFeedback(.selection, trigger: isSelected)
-    }
-}
-
-// MARK: - Bye Week Row View (Updated)
-struct ByeWeekRowView: View {
-    let week: Int
-    let teamColor: String
-    let isSelected: Bool
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            VStack(spacing: 0) {
-                // Bye week content - no outer background, centered
-                HStack {
-                    Spacer()
-                    
-                    HStack(spacing: 16) {
-                        // Week number inside gradient
-                        Text("Week \(week)")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
-                        
-                        HStack(spacing: 12) {
-                            Image(systemName: "moon.zzz.fill")
-                                .font(.title2)
-                                .foregroundColor(.white.opacity(0.9))
-                                .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
-                            
-                            Text("BYE")
-                                .font(.headline)
-                                .fontWeight(.medium)
-                                .foregroundColor(.white)
-                                .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
-                        }
-                    }
-                    
-                    Spacer()
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 16)
-                .background(
-                    // Subtle gradient for bye week
-                    LinearGradient(
-                        gradient: Gradient(stops: [
-                            .init(color: Color.secondary.opacity(0.6), location: 0.0),
-                            .init(color: Color.secondary.opacity(0.4), location: 1.0)
-                        ]),
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                
-                // Expanded content when selected
-                if isSelected {
-                    VStack(spacing: 8) {
-                        Divider()
-                            .padding(.horizontal, 20)
-                        
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Team gets a week off")
-                                    .font(.subheadline)
-                                    .foregroundColor(.primary)
-                                
-                                Text("• Players recover from injuries")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                
-                                Text("• Extra time to prepare for next game")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Spacer()
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 8)
-                    }
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(.ultraThinMaterial)
-                    )
-                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                }
-            }
-            .scaleEffect(isSelected ? 1.02 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSelected)
-        }
-        .buttonStyle(.plain)
-        .sensoryFeedback(.selection, trigger: isSelected)
     }
 }
 
@@ -1046,9 +1196,6 @@ struct LeagueSetupView: View {
     @State private var teamLogo: UIImage?
     @State private var showingImageError = false
     @State private var imageErrorMessage = ""
-    @State private var primaryColor: Color = .blue
-    @State private var secondaryColor: Color = .red
-    @State private var thirdColor: Color = .white
     
     // Gameplay Settings
     @State private var difficulty: String = "Pro"
@@ -1109,11 +1256,6 @@ struct LeagueSetupView: View {
     init(team: TeamData) {
         self.team = team
         self._leagueSettings = State(initialValue: team.leagueSettings)
-        
-        // Initialize team colors based on current team
-        let teamColors = TeamColorMapping.getColors(for: team.logoName)
-        self._primaryColor = State(initialValue: Color(hex: teamColors.primary))
-        self._secondaryColor = State(initialValue: Color(hex: teamColors.secondary))
     }
     
     var body: some View {
@@ -1168,14 +1310,11 @@ struct LeagueSetupView: View {
             VStack(spacing: 16) {
                 // Team Logo Upload
                 teamLogoSection
-                
-                // Team Colors
-                teamColorsSection
             }
             .padding(20)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .roundedBackground(.ultraThinMaterial, radius: Corner.large)
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: Corner.large, style: .continuous)
                     .stroke(Color(hex: team.primaryColor).opacity(0.3), lineWidth: 1.5)
             )
         }
@@ -1201,9 +1340,9 @@ struct LeagueSetupView: View {
                     }
                 }
                 .frame(width: 80, height: 80)
-                .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12))
+                .roundedBackground(Color(.systemGray6), radius: Corner.medium)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: Corner.medium, style: .continuous)
                         .stroke(.secondary.opacity(0.3), lineWidth: 1)
                 )
                 
@@ -1218,7 +1357,7 @@ struct LeagueSetupView: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 10)
-                            .background(Color(hex: team.primaryColor), in: RoundedRectangle(cornerRadius: 8))
+                            .roundedBackground(Color(hex: team.primaryColor), radius: Corner.small)
                     }
                     
                     VStack(alignment: .leading, spacing: 2) {
@@ -1235,61 +1374,7 @@ struct LeagueSetupView: View {
         }
     }
     
-    private var teamColorsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Team Colors")
-                .font(.headline)
-                .fontWeight(.semibold)
-            
-            VStack(spacing: 12) {
-                colorPickerRow(
-                    title: "Primary Color",
-                    description: "Main team color for uniforms and UI",
-                    color: $primaryColor
-                )
-                
-                colorPickerRow(
-                    title: "Secondary Color",
-                    description: "Accent color for details and highlights",
-                    color: $secondaryColor
-                )
-                
-                colorPickerRow(
-                    title: "Third Color",
-                    description: "Additional color for trim and text",
-                    color: $thirdColor
-                )
-            }
-            
-            // Color Preview
-            HStack(spacing: 12) {
-                Text("Preview:")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(primaryColor)
-                        .frame(width: 24, height: 24)
-                    
-                    Circle()
-                        .fill(secondaryColor)
-                        .frame(width: 24, height: 24)
-                    
-                    Circle()
-                        .fill(thirdColor)
-                        .frame(width: 24, height: 24)
-                        .overlay(
-                            Circle()
-                                .stroke(.secondary.opacity(0.3), lineWidth: 1)
-                        )
-                }
-                
-                Spacer()
-            }
-            .padding(.top, 8)
-        }
-    }
+
     
     // MARK: - Gameplay Settings Section
     private var gameplaySettingsSection: some View {
@@ -1339,9 +1424,9 @@ struct LeagueSetupView: View {
                 )
             }
             .padding(20)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .roundedBackground(.ultraThinMaterial, radius: Corner.large)
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: Corner.large, style: .continuous)
                     .stroke(.green.opacity(0.3), lineWidth: 1.5)
             )
         }
@@ -1378,65 +1463,16 @@ struct LeagueSetupView: View {
                 )
             }
             .padding(20)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .roundedBackground(.ultraThinMaterial, radius: Corner.large)
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: Corner.large, style: .continuous)
                     .stroke(.orange.opacity(0.3), lineWidth: 1.5)
             )
         }
     }
     
-    // MARK: - Start League Button
-    private var startLeagueButton: some View {
-        NavigationLink {
-            LeagueGameplayView(
-                selectedTeam: team,
-                settings: LeagueGameplaySettings(
-                    difficulty: GameDifficulty(rawValue: difficulty)!.toGlobalDifficulty,
-                    autoSave: autoSave,
-                    autoSetDepthChart: autoSetDepthChart,
-                    autoFillTeam: autoFillTeam,
-                    injuriesEnabled: leagueSettings.injuriesEnabled,
-                    salaryCapEnabled: leagueSettings.salaryCapEnabled,
-                    acceleratedClock: acceleratedClock,
-                    gameSpeed: GameSpeed(rawValue: gameSpeed)!.toGlobalSpeed
-                )
-            )
-        } label: {
-            HStack {
-                Image(systemName: "play.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(.white)
-                
-                Text("Start League with \(TeamData.getTeamDisplayName(team.logoName))")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                
-                Spacer()
-                
-                Image(systemName: "arrow.right.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(.white.opacity(0.8))
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 16)
-            .background(
-                LinearGradient(
-                    gradient: Gradient(stops: [
-                        .init(color: Color(hex: team.primaryColor), location: 0.0),
-                        .init(color: Color(hex: team.secondaryColor), location: 1.0)
-                    ]),
-                    startPoint: .leading,
-                    endPoint: .trailing
-                ),
-                in: RoundedRectangle(cornerRadius: 16)
-            )
-            .shadow(color: Color(hex: team.primaryColor).opacity(0.4), radius: 8, x: 0, y: 4)
-        }
-        .buttonStyle(.plain)
-        .padding(.top, 8)
-    }
+    // MARK: - Start League Button (deprecated in favor of header bubble)
+    private var startLeagueButton: some View { EmptyView() }
     
     // MARK: - Helper Views
     private func sectionHeader(title: String, icon: String, color: Color) -> some View {
@@ -1454,25 +1490,7 @@ struct LeagueSetupView: View {
         }
     }
     
-    private func colorPickerRow(title: String, description: String, color: Binding<Color>) -> some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
-                Text(description)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            ColorPicker("", selection: color)
-                .frame(width: 40, height: 30)
-        }
-        .padding(.vertical, 4)
-    }
+
     
     private func toggleSetting(title: String, description: String, isOn: Binding<Bool>, icon: String) -> some View {
         HStack {
@@ -1620,290 +1638,67 @@ struct LeagueSetupView: View {
     }
 }
 
-// MARK: - Team Overalls Card
-struct TeamOverallsCard: View {
-    let teamOveralls: (offense: Int, defense: Int, overall: Int)
-    let teamColor: String
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Team Ratings")
-                .font(.headline)
-                .fontWeight(.semibold)
-                .foregroundColor(.primary)
-            
-            HStack(spacing: 20) {
-                OverallStatView(
-                    title: "Offense",
-                    rating: teamOveralls.offense,
-                    color: .blue
-                )
-                
-                OverallStatView(
-                    title: "Defense",
-                    rating: teamOveralls.defense,
-                    color: .red
-                )
-                
-                OverallStatView(
-                    title: "Overall",
-                    rating: teamOveralls.overall,
-                    color: Color(hex: teamColor)
-                )
-            }
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color(hex: teamColor).opacity(0.3), lineWidth: 1.5)
-                )
-        )
-    }
-}
+// MARK: - Team Overalls Card (Moved to TeamOverviewCards.swift)
 
-// MARK: - Overall Stat View
-struct OverallStatView: View {
-    let title: String
-    let rating: Int
-    let color: Color
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            Text("\(rating)")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundColor(ratingColor(rating))
-            
-            Text(title)
-                .font(.subheadline)
-                .fontWeight(.medium)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-    }
-    
-    private func ratingColor(_ rating: Int) -> Color {
-        switch rating {
-        case 0..<70:
-            return .red
-        case 70..<90:
-            // Green gradient from light (70) to dark (89)
-            let normalizedRating = Double(rating - 70) / 19.0 // 0.0 to 1.0
-            return Color.green.opacity(0.6 + (normalizedRating * 0.4))
-        case 90...99:
-            // Gold gradient from bright (90) to dark (99)
-            let normalizedRating = Double(rating - 90) / 9.0 // 0.0 to 1.0
-            let hue = 0.15 // Gold hue
-            let saturation = 0.8 + (normalizedRating * 0.2) // 0.8 to 1.0
-            let brightness = 1.0 - (normalizedRating * 0.3) // 1.0 to 0.7
-            return Color(hue: hue, saturation: saturation, brightness: brightness)
-        default:
-            return .gray
-        }
-    }
-}
+// MARK: - Overall Stat View (Moved to TeamOverviewCards.swift)
 
-// MARK: - Top Players Card
-struct TopPlayersCard: View {
-    let players: [PlayerData]
-    let teamColor: String
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: "star.fill")
-                    .foregroundColor(.orange)
-                
-                Text("Top 5 Players")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                
-                Spacer()
-            }
-            
-            VStack(spacing: 12) {
-                ForEach(Array(players.enumerated()), id: \.element.id) { index, player in
-                    TopPlayerRowView(
-                        player: player,
-                        rank: index + 1,
-                        teamColor: teamColor
-                    )
-                }
-            }
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color(hex: teamColor).opacity(0.3), lineWidth: 1.5)
-                )
-        )
-    }
-}
+// MARK: - Top Players Card (Moved to TeamOverviewCards.swift)
 
-// MARK: - Top Player Row View
-struct TopPlayerRowView: View {
-    let player: PlayerData
-    let rank: Int
-    let teamColor: String
-    
-    var body: some View {
-        HStack(spacing: 16) {
-            // Rank
-            Text("\(rank)")
-                .font(.headline)
-                .fontWeight(.bold)
-                .foregroundColor(.white)
-                .frame(width: 28, height: 28)
-                .background(
-                    Circle()
-                        .fill(Color(hex: teamColor))
-                )
-            
-            // Player Info
-            VStack(alignment: .leading, spacing: 2) {
-                Text(player.fullName)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                
-                HStack(spacing: 8) {
-                    Text(player.position)
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundColor(.secondary)
-                    
-                    Text("#\(player.number)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            
-            Spacer()
-            
-            // Overall Rating
-            Text("\(player.overall)")
-                .font(.title3)
-                .fontWeight(.bold)
-                .foregroundColor(ratingColor(player.overall))
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(.regularMaterial)
-        )
-    }
-    
-    private func ratingColor(_ rating: Int) -> Color {
-        switch rating {
-        case 0..<70:
-            return .red
-        case 70..<90:
-            // Green gradient from light (70) to dark (89)
-            let normalizedRating = Double(rating - 70) / 19.0 // 0.0 to 1.0
-            return Color.green.opacity(0.6 + (normalizedRating * 0.4))
-        case 90...99:
-            // Gold gradient from bright (90) to dark (99)
-            let normalizedRating = Double(rating - 90) / 9.0 // 0.0 to 1.0
-            let hue = 0.15 // Gold hue
-            let saturation = 0.8 + (normalizedRating * 0.2) // 0.8 to 1.0
-            let brightness = 1.0 - (normalizedRating * 0.3) // 1.0 to 0.7
-            return Color(hue: hue, saturation: saturation, brightness: brightness)
-        default:
-            return .gray
-        }
-    }
-}
+// MARK: - Top Player Row View (Moved to TeamOverviewCards.swift)
 
-// MARK: - Team Stats Card
-struct TeamStatsCard: View {
-    let playerCount: Int
-    let scheduleCount: Int
-    let teamColor: String
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: "info.circle.fill")
-                    .foregroundColor(Color(hex: teamColor))
-                
-                Text("Team Info")
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                
-                Spacer()
-            }
-            
-            HStack(spacing: 40) {
-                VStack(spacing: 4) {
-                    Text("\(playerCount)")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(Color(hex: teamColor))
-                    
-                    Text("Players")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-                VStack(spacing: 4) {
-                    Text("\(scheduleCount)")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(Color(hex: teamColor))
-                    
-                    Text("Games")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-                Spacer()
-            }
-        }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color(hex: teamColor).opacity(0.3), lineWidth: 1.5)
-                )
-        )
-    }
-}
+// MARK: - Team Stats Card (Moved to TeamOverviewCards.swift)
 
 // MARK: - Sample Data Generation (Temporary until JSON loading is implemented)
 extension TeamData {
-    static func generateSamplePlayers() -> [PlayerData] {
-        let positions = ["QB", "RB", "WR", "TE", "OL", "DL", "LB", "DB", "K"]
-        let firstNames = ["John", "Mike", "David", "Chris", "Ryan", "Alex", "Matt", "Josh", "Nick", "Tom", "Jake", "Sam", "Ben", "Luke", "Tyler"]
-        let lastNames = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson"]
+    static func generateSamplePlayers(isTrainingCamp: Bool = false) -> [PlayerData] {
+        // Generate consistent sample players (only used as fallback)
+        let firstNames = [
+            "Aaron", "Adrian", "Alex", "Andrew", "Anthony", "Antonio", "Ben", "Brandon", "Brian", "Calvin",
+            "Cameron", "Carlos", "Chris", "Christian", "Dak", "Daniel", "David", "Derek", "DeAndre", "Eric",
+            "Frank", "George", "Henry", "Isaiah", "Ivan", "Jack", "Jalen", "James", "Jason", "Jaylen",
+            "Jordan", "Josh", "Justin", "Kyle", "Lamar", "Luke", "Marcus", "Mark", "Mason", "Matt",
+            "Michael", "Mike", "Nathan", "Nick", "Oscar", "Patrick", "Paul", "Quinn", "Robert", "Ryan",
+            "Sam", "Steve", "Tanner", "Tom", "Tony", "Travis", "Trevor", "Tyler", "Victor", "Zach"
+        ]
+        let lastNames = [
+            "Adams", "Allen", "Anderson", "Baker", "Bell", "Brown", "Clark", "Davis", "Evans", "Fisher",
+            "Garcia", "Green", "Hall", "Harris", "Hill", "Jackson", "Johnson", "Jones", "King", "Lee",
+            "Lewis", "Martin", "Miller", "Moore", "Nelson", "Parker", "Phillips", "Quinn", "Roberts", "Robinson",
+            "Rodriguez", "Smith", "Taylor", "Thomas", "Thompson", "Turner", "Walker", "White", "Williams", "Wilson",
+            "Wood", "Wright", "Young", "Campbell", "Carter", "Collins", "Cooper", "Edwards", "Ellis", "Foster"
+        ]
+        let positions = ["QB", "RB", "WR", "TE", "LT", "LG", "C", "RG", "RT", "DE", "DT", "MLB", "CB", "SS", "FS", "K", "P"]
         
         var players: [PlayerData] = []
         var usedNumbers: Set<Int> = []
         
-        for _ in 0..<53 {
-            var number: Int
-            repeat {
-                number = Int.random(in: 1...99)
-            } while usedNumbers.contains(number)
+        // Generate appropriate number of players (60 for training camp, 53 for regular season)
+        let playerCount = isTrainingCamp ? 60 : 53
+        for i in 0..<playerCount {
+            // Use index-based deterministic selection instead of random
+            let firstNameIndex = i % firstNames.count
+            let lastNameIndex = (i * 7) % lastNames.count  // Different multiplier for variety
+            let positionIndex = i % positions.count
+            
+            // Generate deterministic jersey number
+            var number = (i + 1)
+            while usedNumbers.contains(number) {
+                number += 1
+                if number > 99 { number = 1 }
+            }
             usedNumbers.insert(number)
             
+            // Generate deterministic overall and age based on index
+            let overall = 55 + (i * 7) % 40  // Range 55-95
+            let age = 22 + (i * 3) % 14      // Range 22-35
+            
             let player = PlayerData(
-                firstName: firstNames.randomElement()!,
-                lastName: lastNames.randomElement()!,
-                position: positions.randomElement()!,
+                firstName: firstNames[firstNameIndex],
+                lastName: lastNames[lastNameIndex],
+                position: positions[positionIndex],
                 number: number,
-                overall: Int.random(in: 55...95),
-                age: Int.random(in: 22...35)
+                overall: overall,
+                age: age
             )
             players.append(player)
         }
@@ -1912,21 +1707,23 @@ extension TeamData {
     }
     
     static func generateSampleSchedule() -> [GameData] {
-        let opponents = [
-            "Patriots", "Dolphins", "Bills", "Steelers", "Ravens", "Browns", "Bengals",
-            "Colts", "Titans", "Jaguars", "Texans", "Chiefs", "Chargers", "Raiders",
-            "Broncos", "Cowboys", "Giants"
-        ]
+        let opponents = ["Dallas", "Philadelphia", "Washington", "New York", "Green Bay", "Minnesota", "Detroit",
+                        "Tampa Bay", "New Orleans", "Atlanta", "Carolina", "San Francisco", "Seattle", "Arizona",
+                        "Los Angeles", "Kansas City", "Buffalo"]
         
         var schedule: [GameData] = []
         
+        // Generate 17 games deterministically
         for week in 1...17 {
+            let opponentIndex = (week - 1) % opponents.count
+            let isHome = week % 2 == 1  // Alternating home/away pattern
+            
             let game = GameData(
                 week: week,
-                opponent: opponents.randomElement()!,
-                isHome: Bool.random(),
-                date: "Sep \(week + 7)",
-                time: ["1:00 PM", "4:25 PM", "8:20 PM"].randomElement()!
+                opponent: opponents[opponentIndex],
+                isHome: isHome,
+                date: "Week \(week)",
+                time: getGameTime(for: week)
             )
             schedule.append(game)
         }

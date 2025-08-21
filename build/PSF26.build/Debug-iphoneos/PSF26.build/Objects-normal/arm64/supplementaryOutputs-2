@@ -1,0 +1,30 @@
+"/Users/jay/Documents/PSF26/PSF26/Views/TeamSelectionView.swift":
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/TeamSelectionView.o"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/TeamSelectionView.d"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/TeamSelectionView.swiftdeps"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/TeamSelectionView.swiftconstvalues"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/TeamSelectionView.dia"
+"/Users/jay/Documents/PSF26/PSF26/Views/CreateLeagueView.swift":
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/CreateLeagueView.swiftdeps"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/CreateLeagueView.o"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/CreateLeagueView.dia"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/CreateLeagueView.d"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/CreateLeagueView.swiftconstvalues"
+"/Users/jay/Documents/PSF26/PSF26/Views/SeasonScheduleView.swift":
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/SeasonScheduleView.d"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/SeasonScheduleView.swiftdeps"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/SeasonScheduleView.dia"
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/SeasonScheduleView.o"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/SeasonScheduleView.swiftconstvalues"
+"/Users/jay/Documents/PSF26/PSF26/Models/GameResultsManager.swift":
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/GameResultsManager.o"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/GameResultsManager.swiftdeps"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/GameResultsManager.d"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/GameResultsManager.dia"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/GameResultsManager.swiftconstvalues"
+"/Users/jay/Documents/PSF26/PSF26/PerformanceIntegration.swift":
+  object: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/PerformanceIntegration.o"
+  const-values: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/PerformanceIntegration.swiftconstvalues"
+  swift-dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/PerformanceIntegration.swiftdeps"
+  dependencies: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/PerformanceIntegration.d"
+  diagnostics: "/Users/jay/Documents/PSF26/build/PSF26.build/Debug-iphoneos/PSF26.build/Objects-normal/arm64/PerformanceIntegration.dia"

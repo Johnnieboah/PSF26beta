@@ -3,14 +3,21 @@ import SwiftUI
 // MARK: - Season Stats View
 struct SeasonStatsView: View {
     @ObservedObject var leagueManager: LeagueManager
+    let leagueId: UUID? // Phase 5: Add league context for player details
     @Environment(\.dismiss) private var dismiss
     @State private var selectedCategory: StatsCategory = .team
+    
+    init(leagueManager: LeagueManager, leagueId: UUID? = nil) {
+        self.leagueManager = leagueManager
+        self.leagueId = leagueId
+    }
     
     enum StatsCategory: String, CaseIterable {
         case team = "Team"
         case offense = "Offense"
         case defense = "Defense"
         case league = "League"
+        case players = "Players"
     }
     
     var body: some View {
@@ -90,6 +97,8 @@ struct SeasonStatsView: View {
                 defenseStatsContent
             case .league:
                 leagueStatsContent
+            case .players:
+                playerStatsContent
             }
         }
     }
@@ -104,7 +113,7 @@ struct SeasonStatsView: View {
         }
     }
     
-    private func createUserTeamStatsCard(_ userTeam: TeamData) -> some View {
+    private func createUserTeamStatsCard(_ userTeam: LeagueTeam) -> some View {
         let teamRecord = leagueManager.teamRecord
         return UserTeamStatsCard(
             team: userTeam,
@@ -113,7 +122,7 @@ struct SeasonStatsView: View {
         )
     }
     
-    private func createTeamComparisonCard(_ userTeam: TeamData) -> some View {
+    private func createTeamComparisonCard(_ userTeam: LeagueTeam) -> some View {
         TeamComparisonCard(
             userTeam: userTeam,
             leagueManager: leagueManager
@@ -143,69 +152,88 @@ struct SeasonStatsView: View {
             PlayoffPictureCard(leagueManager: leagueManager)
         }
     }
+    
+    // MARK: - Player Stats Content
+    private var playerStatsContent: some View {
+        VStack(spacing: 20) {
+            PlayerLeadersCard(leagueManager: leagueManager, leagueId: leagueId)
+            if let userTeam = leagueManager.userTeam {
+                TeamPlayerLeadersCard(team: userTeam, leagueManager: leagueManager)
+            }
+        }
+    }
 }
 
 // MARK: - User Team Stats Card
 struct UserTeamStatsCard: View {
-    let team: TeamData
+    let team: LeagueTeam
     let record: TeamRecord
     let leagueManager: LeagueManager
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            headerSection
-            statsGrid
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(team.name)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                    
+                    Text("Your Team")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(record.description)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.blue)
+                    
+                    Text("Record")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            // Team season stats if available
+            if let teamStats = leagueManager.getTeamSeasonStats(teamLogoName: team.logoName) {
+                teamSeasonStatsGrid(teamStats)
+            } else {
+                // Basic stats grid
+                statsGrid
+            }
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color(hex: team.primaryColor).opacity(0.3), lineWidth: 1.5)
+                .stroke(.secondary.opacity(0.3), lineWidth: 1)
         )
     }
     
-    private var headerSection: some View {
-        HStack {
-            Image(team.logoName)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 50, height: 50)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(team.name)
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
-                
-                Text("\(record.wins)-\(record.losses)-\(record.ties)")
-                    .font(.subheadline)
-                    .foregroundColor(Color(hex: team.primaryColor))
-            }
-            
-            Spacer()
-            
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("Rank")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                Text("#\(leagueManager.getDivisionRank(for: team))")
-                    .font(.title3)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
-            }
+    private func teamSeasonStatsGrid(_ teamStats: TeamSeasonStats) -> some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 16) {
+            StatCard(title: "Points/Game", value: String(format: "%.1f", teamStats.pointsPerGame), style: .highlighted(.blue))
+            StatCard(title: "Yards/Game", value: String(format: "%.0f", teamStats.yardsPerGame), style: .highlighted(.green))
+            StatCard(title: "Pass Yards", value: "\(teamStats.totalPassingYards)", style: .highlighted(.orange))
+            StatCard(title: "Rush Yards", value: "\(teamStats.totalRushingYards)", style: .highlighted(.purple))
+            StatCard(title: "Points Against", value: String(format: "%.1f", teamStats.pointsAllowedPerGame), style: .highlighted(.red))
+            StatCard(title: "Turnovers", value: "\(teamStats.totalTurnovers)", style: .highlighted(.yellow))
         }
     }
     
     private var statsGrid: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 16) {
-            StatItem(title: "Win %", value: String(format: "%.3f", record.winPercentage), color: .green)
-            StatItem(title: "Points For", value: "\(calculatePointsFor())", color: .blue)
-            StatItem(title: "Points Against", value: "\(calculatePointsAgainst())", color: .red)
-            StatItem(title: "Point Diff", value: "\(calculatePointsDiff())", color: calculatePointsDiff() >= 0 ? .green : .red)
-            StatItem(title: "Playoff Odds", value: "\(leagueManager.getPlayoffOdds(for: team))%", color: .purple)
-            StatItem(title: "Games Left", value: "\(17 - record.gamesPlayed)", color: .orange)
+            StatCard(title: "Win %", value: String(format: "%.3f", record.winPercentage), style: .highlighted(.green))
+            StatCard(title: "Points For", value: "\(calculatePointsFor())", style: .highlighted(.blue))
+            StatCard(title: "Points Against", value: "\(calculatePointsAgainst())", style: .highlighted(.red))
+            StatCard(title: "Point Diff", value: "\(calculatePointsDiff())", style: .highlighted(calculatePointsDiff() >= 0 ? .green : .red))
+            StatCard(title: "Playoff Odds", value: "\(leagueManager.getPlayoffOdds(for: team))%", style: .highlighted(.purple))
+            StatCard(title: "Games Left", value: "\(17 - record.gamesPlayed)", style: .highlighted(.orange))
         }
     }
     
@@ -238,34 +266,298 @@ struct UserTeamStatsCard: View {
     }
 }
 
-// MARK: - Stat Item
-struct StatItem: View {
-    let title: String
-    let value: String
-    let color: Color
+
+
+// MARK: - Player Leaders Card
+struct PlayerLeadersCard: View {
+    let leagueManager: LeagueManager
+    let leagueId: UUID? // Phase 5: Add league context for player details
+    @State private var selectedStatCategory: LeagueManager.StatCategory = .passingYards
+    
+    init(leagueManager: LeagueManager, leagueId: UUID? = nil) {
+        self.leagueManager = leagueManager
+        self.leagueId = leagueId
+    }
     
     var body: some View {
-        VStack(spacing: 8) {
-            Text(value)
-                .font(.title3)
+        VStack(alignment: .leading, spacing: 16) {
+            Text("League Leaders")
+                .font(.headline)
                 .fontWeight(.bold)
-                .foregroundColor(color)
+                .foregroundColor(.primary)
             
-            Text(title)
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+            // Stat category picker
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach([LeagueManager.StatCategory.passingYards, .rushingYards, .receivingYards, .passingTouchdowns, .rushingTouchdowns, .receivingTouchdowns, .tackles, .sacks, .interceptions], id: \.self) { category in
+                        Button {
+                            selectedStatCategory = category
+                        } label: {
+                            Text(categoryDisplayName(category))
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(selectedStatCategory == category ? .white : .primary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(selectedStatCategory == category ? Color.blue : Color(.systemGray6))
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 4)
+            }
+            
+            // Leaders list
+            let leaders = leagueManager.getLeagueLeaders(category: selectedStatCategory, limit: 5)
+            
+            if leaders.isEmpty {
+                Text("No stats available yet")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .padding(.vertical, 20)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(Array(leaders.enumerated()), id: \.element.id) { index, player in
+                        PlayerLeaderRow(
+                            rank: index + 1,
+                            player: player,
+                            statValue: getStatValue(player: player, category: selectedStatCategory),
+                            statLabel: getStatLabel(category: selectedStatCategory),
+                            leagueId: leagueId,
+                            leagueManager: leagueManager
+                        )
+                    }
+                }
+            }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(.secondary.opacity(0.3), lineWidth: 1)
+        )
+    }
+    
+    private func categoryDisplayName(_ category: LeagueManager.StatCategory) -> String {
+        switch category {
+        case .passingYards: return "Pass Yds"
+        case .rushingYards: return "Rush Yds"
+        case .receivingYards: return "Rec Yds"
+        case .passingTouchdowns: return "Pass TDs"
+        case .rushingTouchdowns: return "Rush TDs"
+        case .receivingTouchdowns: return "Rec TDs"
+        case .tackles: return "Tackles"
+        case .sacks: return "Sacks"
+        case .interceptions: return "INTs"
+        case .fieldGoals: return "FGs"
+        }
+    }
+    
+    private func getStatValue(player: PlayerSeasonStats, category: LeagueManager.StatCategory) -> String {
+        switch category {
+        case .passingYards: return "\(player.passingYards)"
+        case .rushingYards: return "\(player.rushingYards)"
+        case .receivingYards: return "\(player.receivingYards)"
+        case .passingTouchdowns: return "\(player.passingTouchdowns)"
+        case .rushingTouchdowns: return "\(player.rushingTouchdowns)"
+        case .receivingTouchdowns: return "\(player.receivingTouchdowns)"
+        case .tackles: return "\(player.tackles)"
+        case .sacks: return "\(player.sacksMade)"
+        case .interceptions: return "\(player.interceptionsDefense)"
+        case .fieldGoals: return "\(player.fieldGoalsMade)"
+        }
+    }
+    
+    private func getStatLabel(category: LeagueManager.StatCategory) -> String {
+        switch category {
+        case .passingYards, .rushingYards, .receivingYards: return "yards"
+        case .passingTouchdowns, .rushingTouchdowns, .receivingTouchdowns: return "TDs"
+        case .tackles: return "tackles"
+        case .sacks: return "sacks"
+        case .interceptions: return "INTs"
+        case .fieldGoals: return "FGs"
+        }
+    }
+}
+
+// MARK: - Player Leader Row
+struct PlayerLeaderRow: View {
+    let rank: Int
+    let player: PlayerSeasonStats
+    let statValue: String
+    let statLabel: String
+    let leagueId: UUID?
+    let leagueManager: LeagueManager?
+    @State private var showingPlayerDetail = false
+    
+    init(rank: Int, player: PlayerSeasonStats, statValue: String, statLabel: String, leagueId: UUID? = nil, leagueManager: LeagueManager? = nil) {
+        self.rank = rank
+        self.player = player
+        self.statValue = statValue
+        self.statLabel = statLabel
+        self.leagueId = leagueId
+        self.leagueManager = leagueManager
+    }
+    
+    var body: some View {
+        Button(action: {
+            showingPlayerDetail = true
+        }) {
+            HStack {
+                // Rank
+                Text("\(rank)")
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.secondary)
+                    .frame(width: 20)
+                
+                // Player info
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(player.playerName)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    HStack(spacing: 4) {
+                        Text(player.position)
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        
+                        Text("•")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Text(TeamData.getTeamDisplayName(player.teamLogoName))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                // Stat value
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(statValue)
+                        .font(.subheadline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.blue)
+                    
+                    Text(statLabel)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                // Navigation indicator
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showingPlayerDetail) {
+            PlayerDetailView(
+                player: player.toPlayerData(),
+                teamLogoName: player.teamLogoName,
+                leagueId: leagueId,
+                isEditable: leagueId != nil,
+                leagueManager: leagueManager
+            )
+        }
+    }
+}
+
+// MARK: - Team Player Leaders Card
+struct TeamPlayerLeadersCard: View {
+    let team: LeagueTeam
+    let leagueManager: LeagueManager
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("\(team.name) Leaders")
+                .font(.headline)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+            
+            VStack(spacing: 12) {
+                // Passing leader
+                if let passingLeader = leagueManager.getTeamLeaders(teamLogoName: team.logoName, category: .passingYards, limit: 1).first {
+                    TeamLeaderRow(title: "Passing", player: passingLeader, stat: "\(passingLeader.passingYards) yards")
+                }
+                
+                // Rushing leader
+                if let rushingLeader = leagueManager.getTeamLeaders(teamLogoName: team.logoName, category: .rushingYards, limit: 1).first {
+                    TeamLeaderRow(title: "Rushing", player: rushingLeader, stat: "\(rushingLeader.rushingYards) yards")
+                }
+                
+                // Receiving leader
+                if let receivingLeader = leagueManager.getTeamLeaders(teamLogoName: team.logoName, category: .receivingYards, limit: 1).first {
+                    TeamLeaderRow(title: "Receiving", player: receivingLeader, stat: "\(receivingLeader.receivingYards) yards")
+                }
+                
+                // Tackles leader
+                if let tacklesLeader = leagueManager.getTeamLeaders(teamLogoName: team.logoName, category: .tackles, limit: 1).first {
+                    TeamLeaderRow(title: "Tackles", player: tacklesLeader, stat: "\(tacklesLeader.tackles) tackles")
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(.secondary.opacity(0.3), lineWidth: 1)
+        )
+    }
+}
+
+// MARK: - Team Leader Row
+struct TeamLeaderRow: View {
+    let title: String
+    let player: PlayerSeasonStats
+    let stat: String
+    
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(.blue)
+                .frame(width: 80, alignment: .leading)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(player.playerName)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                Text(player.position)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Text(stat)
+                .font(.subheadline)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
     }
 }
 
 // MARK: - Team Comparison Card
 struct TeamComparisonCard: View {
-    let userTeam: TeamData
+    let userTeam: LeagueTeam
     let leagueManager: LeagueManager
     
     var body: some View {
@@ -283,11 +575,7 @@ struct TeamComparisonCard: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(.secondary.opacity(0.3), lineWidth: 1)
-        )
+        .standardCard(.ultraThin16)
     }
     
     private func teamComparisonRow(for team: LeagueTeam) -> some View {
@@ -347,11 +635,29 @@ struct OffenseStatsCard: View {
                 .fontWeight(.bold)
                 .foregroundColor(.primary)
             
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
-                StatItem(title: "Points/Game", value: "24.3", color: .blue)
-                StatItem(title: "Total Yards", value: "352", color: .green)
-                StatItem(title: "Pass Yards", value: "245", color: .orange)
-                StatItem(title: "Rush Yards", value: "107", color: .purple)
+            if let userTeam = leagueManager.userTeam,
+               let teamStats = leagueManager.getTeamSeasonStats(teamLogoName: userTeam.logoName) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
+                    StatCard(title: "Points/Game", value: String(format: "%.1f", teamStats.pointsPerGame), style: .highlighted(.blue))
+                    StatCard(title: "Total Yards", value: String(format: "%.0f", teamStats.yardsPerGame), style: .highlighted(.green))
+                    StatCard(title: "Pass Yards", value: "\(teamStats.totalPassingYards)", style: .highlighted(.orange))
+                    StatCard(title: "Rush Yards", value: "\(teamStats.totalRushingYards)", style: .highlighted(.purple))
+                    StatCard(title: "Total TDs", value: "\(teamStats.totalTouchdowns)", style: .highlighted(.red))
+                    StatCard(title: "1st Downs", value: "\(teamStats.totalFirstDowns)", style: .highlighted(.cyan))
+                    StatCard(title: "3rd Down %", value: String(format: "%.1f%%", teamStats.thirdDownPercentage), style: .highlighted(.mint))
+                    StatCard(title: "Red Zone %", value: String(format: "%.1f%%", teamStats.redZonePercentage), style: .highlighted(.pink))
+                }
+            } else {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
+                    StatCard(title: "Points/Game", value: "0.0", style: .highlighted(.blue))
+                    StatCard(title: "Total Yards", value: "0", style: .highlighted(.green))
+                    StatCard(title: "Pass Yards", value: "0", style: .highlighted(.orange))
+                    StatCard(title: "Rush Yards", value: "0", style: .highlighted(.purple))
+                    StatCard(title: "Total TDs", value: "0", style: .highlighted(.red))
+                    StatCard(title: "1st Downs", value: "0", style: .highlighted(.cyan))
+                    StatCard(title: "3rd Down %", value: "0.0%", style: .highlighted(.mint))
+                    StatCard(title: "Red Zone %", value: "0.0%", style: .highlighted(.pink))
+                }
             }
         }
         .padding(.horizontal, 20)
@@ -374,11 +680,29 @@ struct DefenseStatsCard: View {
                 .fontWeight(.bold)
                 .foregroundColor(.primary)
             
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
-                StatItem(title: "Points Allow", value: "18.7", color: .red)
-                StatItem(title: "Yards Allow", value: "298", color: .orange)
-                StatItem(title: "Takeaways", value: "12", color: .green)
-                StatItem(title: "Sacks", value: "28", color: .blue)
+            if let userTeam = leagueManager.userTeam,
+               let teamStats = leagueManager.getTeamSeasonStats(teamLogoName: userTeam.logoName) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
+                    StatCard(title: "Points Allow", value: String(format: "%.1f", teamStats.pointsAllowedPerGame), style: .highlighted(.red))
+                    StatCard(title: "Yards Allow", value: String(format: "%.0f", teamStats.yardsAllowedPerGame), style: .highlighted(.orange))
+                    StatCard(title: "Pass Yds Allow", value: "\(teamStats.passingYardsAllowed)", style: .highlighted(.yellow))
+                    StatCard(title: "Rush Yds Allow", value: "\(teamStats.rushingYardsAllowed)", style: .highlighted(.brown))
+                    StatCard(title: "Sacks", value: "\(teamStats.sacksAllowed)", style: .highlighted(.blue))
+                    StatCard(title: "Interceptions", value: "\(teamStats.interceptionsForced)", style: .highlighted(.green))
+                    StatCard(title: "Fumbles Forced", value: "\(teamStats.fumblesForced)", style: .highlighted(.purple))
+                    StatCard(title: "Def TDs", value: "\(teamStats.defensiveTouchdowns)", style: .highlighted(.cyan))
+                }
+            } else {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
+                    StatCard(title: "Points Allow", value: "0.0", style: .highlighted(.red))
+                    StatCard(title: "Yards Allow", value: "0", style: .highlighted(.orange))
+                    StatCard(title: "Pass Yds Allow", value: "0", style: .highlighted(.yellow))
+                    StatCard(title: "Rush Yds Allow", value: "0", style: .highlighted(.brown))
+                    StatCard(title: "Sacks", value: "0", style: .highlighted(.blue))
+                    StatCard(title: "Interceptions", value: "0", style: .highlighted(.green))
+                    StatCard(title: "Fumbles Forced", value: "0", style: .highlighted(.purple))
+                    StatCard(title: "Def TDs", value: "0", style: .highlighted(.cyan))
+                }
             }
         }
         .padding(.horizontal, 20)

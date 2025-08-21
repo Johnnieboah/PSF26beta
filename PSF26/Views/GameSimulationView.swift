@@ -1,4 +1,6 @@
 import SwiftUI
+import Metal
+import Combine
 
 // MARK: - Game Simulation View
 struct GameSimulationView: View {
@@ -26,14 +28,16 @@ struct GameSimulationView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background
-                LinearGradient(
-                    gradient: Gradient(stops: [
-                        .init(color: Color(.systemBackground), location: 0.0),
-                        .init(color: Color(.systemGray6), location: 1.0)
-                    ]),
-                    startPoint: .top,
-                    endPoint: .bottom
+                // Metal-optimized background
+                MetalGradientBackground(
+                    colors: [
+                        Color(.systemBackground),
+                        Color(.systemGray6),
+                        Color(.systemGray5).opacity(0.5)
+                    ],
+                    startPoint: UnitPoint.top,
+                    endPoint: UnitPoint.bottom,
+                    animationSpeed: 0.5
                 )
                 .ignoresSafeArea()
                 
@@ -44,6 +48,17 @@ struct GameSimulationView: View {
                         
                         // Score Display
                         scoreDisplayView
+                        
+                        // Metal-Enhanced Stats Visualization
+                        if simulationPhase == .inProgress || simulationPhase == .completed {
+                            MetalStatsVisualization(
+                                homeScore: currentGame.homeScore,
+                                awayScore: currentGame.awayScore,
+                                homeTeam: currentGame.homeTeam.logoName,
+                                awayTeam: currentGame.awayTeam.logoName
+                            )
+                            .standardCard(.ultraThin16)
+                        }
                         
                         // Game Status
                         gameStatusView
@@ -61,9 +76,13 @@ struct GameSimulationView: View {
                     .padding(.horizontal, 16)
                     .padding(.top, 20)
                 }
+                .metalOptimized()
             }
             .navigationTitle("Week \(game.week)")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                // Additional guard handled at presentation level; keep console note here if needed
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Close") {
@@ -90,7 +109,7 @@ struct GameSimulationView: View {
     // MARK: - Game Header
     private var gameHeaderView: some View {
         VStack(spacing: 16) {
-            Text("2025 NFL Season")
+                            Text("2025 PFL Season")
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .textCase(.uppercase)
@@ -99,11 +118,12 @@ struct GameSimulationView: View {
             HStack(spacing: 40) {
                 // Away Team
                 VStack(spacing: 12) {
-                    Image(currentGame.awayTeam.logoName)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 80, height: 80)
-                        .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+                    MetalTeamLogoRenderer(
+                        teamName: currentGame.awayTeam.logoName,
+                        size: CGSize(width: 80, height: 80),
+                        enableEffects: true
+                    )
+                    .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
                     
                     VStack(spacing: 4) {
                         Text(TeamData.getTeamDisplayName(currentGame.awayTeam.logoName))
@@ -132,11 +152,12 @@ struct GameSimulationView: View {
                 
                 // Home Team
                 VStack(spacing: 12) {
-                    Image(currentGame.homeTeam.logoName)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 80, height: 80)
-                        .shadow(color: .black.opacity(0.3), radius: 4, x: 0, y: 2)
+                    MetalTeamLogoRenderer(
+                        teamName: currentGame.homeTeam.logoName,
+                        size: CGSize(width: 80, height: 80),
+                        enableEffects: true
+                    )
+                    .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
                     
                     VStack(spacing: 4) {
                         Text(TeamData.getTeamDisplayName(currentGame.homeTeam.logoName))
@@ -154,11 +175,7 @@ struct GameSimulationView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 24)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(.secondary.opacity(0.3), lineWidth: 1)
-        )
+        .standardCard(.ultraThin16)
     }
     
     // MARK: - Score Display
@@ -197,11 +214,7 @@ struct GameSimulationView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 24)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(.secondary.opacity(0.3), lineWidth: 1)
-        )
+        .standardCard(.ultraThin16)
     }
     
     private var awayTeamLeading: Bool {
@@ -259,11 +272,7 @@ struct GameSimulationView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(.secondary.opacity(0.3), lineWidth: 1)
-        )
+        .standardCard(.ultraThin12)
     }
     
     private var gameStatusIcon: String {
@@ -325,11 +334,7 @@ struct GameSimulationView: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(.secondary.opacity(0.3), lineWidth: 1)
-        )
+        .standardCard(.ultraThin12)
     }
     
     // MARK: - Simulation Controls
@@ -356,66 +361,37 @@ struct GameSimulationView: View {
                 
             } else if simulationPhase == .inProgress {
                 HStack(spacing: 16) {
-                    Button {
-                        simulateNextPlay()
-                    } label: {
-                        HStack {
-                            Image(systemName: "forward.fill")
-                            Text("Next Play")
-                                .fontWeight(.semibold)
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(.green, in: RoundedRectangle(cornerRadius: 10))
-                    }
-                    .disabled(isSimulating)
+                    GameActionButton(
+                        title: "Next Play",
+                        systemImage: "forward.fill",
+                        color: .green,
+                        isDisabled: isSimulating,
+                        action: simulateNextPlay
+                    )
                     
-                    Button {
-                        simulateQuarter()
-                    } label: {
-                        HStack {
-                            Image(systemName: "forward.end.fill")
-                            Text("Sim Quarter")
-                                .fontWeight(.semibold)
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(.orange, in: RoundedRectangle(cornerRadius: 10))
-                    }
-                    .disabled(isSimulating)
+                    GameActionButton(
+                        title: "Sim Quarter",
+                        systemImage: "forward.end.fill",
+                        color: .orange,
+                        isDisabled: isSimulating,
+                        action: simulateQuarter
+                    )
                 }
                 
             } else if simulationPhase == .completed {
                 VStack(spacing: 12) {
-                    Button {
-                        showingFinalStats = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "chart.bar.fill")
-                            Text("View Game Stats")
-                                .fontWeight(.semibold)
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(.purple, in: RoundedRectangle(cornerRadius: 10))
-                    }
+                    GameActionButton(
+                        title: "View Game Stats",
+                        systemImage: "chart.bar.fill",
+                        color: .purple,
+                        action: { showingFinalStats = true }
+                    )
                     
-                    Button {
-                        onGameCompleted(currentGame)
-                    } label: {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                            Text("Complete Game")
-                                .fontWeight(.bold)
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(.blue, in: RoundedRectangle(cornerRadius: 12))
-                    }
+                    PrimaryGameButton(
+                        title: "Complete Game",
+                        systemImage: "checkmark.circle.fill",
+                        action: { onGameCompleted(currentGame) }
+                    )
                 }
             }
         }
@@ -430,9 +406,8 @@ struct GameSimulationView: View {
         timeRemaining = "15:00"
         playDescription = "Game has started! Opening kickoff..."
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            isSimulating = false
-        }
+        // Complete simulation immediately
+        isSimulating = false
     }
     
     private func simulateNextPlay() {
@@ -478,9 +453,8 @@ struct GameSimulationView: View {
         // Update time
         updateGameTime()
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            isSimulating = false
-        }
+        // Complete simulation immediately
+        isSimulating = false
     }
     
     private func simulateQuarter() {
@@ -499,11 +473,10 @@ struct GameSimulationView: View {
                 simulationPhase = .halftime
                 playDescription = "End of \(quarter - 1)\(getOrdinalSuffix(quarter - 1)) quarter. Halftime score: \(currentGame.awayScore) - \(currentGame.homeScore)"
                 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    simulationPhase = .inProgress
-                    playDescription = "Second half begins..."
-                    isSimulating = false
-                }
+                // Continue to second half immediately
+                simulationPhase = .inProgress
+                playDescription = "Second half begins..."
+                isSimulating = false
                 return
             } else {
                 playDescription = "End of \(quarter - 1)\(getOrdinalSuffix(quarter - 1)) quarter. Score: \(currentGame.awayScore) - \(currentGame.homeScore)"
@@ -521,9 +494,8 @@ struct GameSimulationView: View {
             playDescription = "FINAL: \(winner) wins \(max(currentGame.homeScore, currentGame.awayScore)) - \(min(currentGame.homeScore, currentGame.awayScore))"
         }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            isSimulating = false
-        }
+        // Complete simulation immediately
+        isSimulating = false
     }
     
     private func updateGameTime() {
@@ -573,8 +545,17 @@ struct GameStatsView: View {
                     // Final Score
                     finalScoreSection
                     
-                    // Team Stats
-                    teamStatsSection
+                    // Enhanced Team Stats
+                    if let detailedStats = game.detailedStats {
+                        enhancedTeamStatsSection(detailedStats)
+                    } else {
+                        basicTeamStatsSection
+                    }
+                    
+                    // Scoring Plays
+                    if !game.scoringPlays.isEmpty {
+                        scoringPlaysSection
+                    }
                     
                     Spacer(minLength: 100)
                 }
@@ -597,10 +578,11 @@ struct GameStatsView: View {
     private var finalScoreSection: some View {
         VStack(spacing: 16) {
             Text("Final Score")
-                .font(.headline)
-                .foregroundColor(.secondary)
+                .font(.title2)
+                .fontWeight(.bold)
             
-            HStack(spacing: 40) {
+            HStack(spacing: 20) {
+                // Away Team
                 VStack(spacing: 8) {
                     Image(game.awayTeam.logoName)
                         .resizable()
@@ -613,14 +595,15 @@ struct GameStatsView: View {
                         .multilineTextAlignment(.center)
                     
                     Text("\(game.awayScore)")
-                        .font(.system(size: 36, weight: .bold))
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundColor(game.awayScore > game.homeScore ? .green : .primary)
                 }
                 
-                Text("-")
-                    .font(.title)
+                Text("@")
+                    .font(.title2)
                     .foregroundColor(.secondary)
                 
+                // Home Team
                 VStack(spacing: 8) {
                     Image(game.homeTeam.logoName)
                         .resizable()
@@ -633,66 +616,336 @@ struct GameStatsView: View {
                         .multilineTextAlignment(.center)
                     
                     Text("\(game.homeScore)")
-                        .font(.system(size: 36, weight: .bold))
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundColor(game.homeScore > game.awayScore ? .green : .primary)
                 }
             }
+            
+            if let detailedStats = game.detailedStats {
+                Text("Game Length: \(formatGameLength(detailedStats.gameLength))")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 24)
+        .padding(24)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(.secondary.opacity(0.3), lineWidth: 1)
-        )
     }
     
-    private var teamStatsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Team Stats")
+    private func enhancedTeamStatsSection(_ stats: DetailedGameStats) -> some View {
+        VStack(spacing: 20) {
+            Text("Team Statistics")
+                .font(.title2)
+                .fontWeight(.bold)
+            
+            // Key Stats Overview
+            keyStatsOverview(stats)
+            
+            // Passing Stats
+            passingStatsSection(stats)
+            
+            // Rushing Stats
+            rushingStatsSection(stats)
+            
+            // Efficiency Stats
+            efficiencyStatsSection(stats)
+            
+            // Time of Possession
+            timeOfPossessionSection(stats)
+        }
+        .padding(20)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+    
+    private func keyStatsOverview(_ stats: DetailedGameStats) -> some View {
+        VStack(spacing: 16) {
+            Text("Key Statistics")
                 .font(.headline)
+                .fontWeight(.semibold)
+            
+            HStack {
+                statColumn(
+                    title: TeamData.getTeamDisplayName(game.awayTeam.logoName),
+                    stats: [
+                        ("Total Yards", "\(stats.awayTeamStats.totalYards)"),
+                        ("First Downs", "\(stats.awayTeamStats.firstDowns)"),
+                        ("Turnovers", "\(stats.awayTeamStats.turnovers)"),
+                        ("Penalties", "\(stats.awayTeamStats.penalties)-\(stats.awayTeamStats.penaltyYards)")
+                    ]
+                )
+                
+                Spacer()
+                
+                statColumn(
+                    title: TeamData.getTeamDisplayName(game.homeTeam.logoName),
+                    stats: [
+                        ("Total Yards", "\(stats.homeTeamStats.totalYards)"),
+                        ("First Downs", "\(stats.homeTeamStats.firstDowns)"),
+                        ("Turnovers", "\(stats.homeTeamStats.turnovers)"),
+                        ("Penalties", "\(stats.homeTeamStats.penalties)-\(stats.homeTeamStats.penaltyYards)")
+                    ]
+                )
+            }
+        }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+    
+    private func passingStatsSection(_ stats: DetailedGameStats) -> some View {
+        VStack(spacing: 16) {
+            Text("Passing Statistics")
+                .font(.headline)
+                .fontWeight(.semibold)
+            
+            HStack {
+                statColumn(
+                    title: TeamData.getTeamDisplayName(game.awayTeam.logoName),
+                    stats: [
+                        ("Comp/Att", "\(stats.awayTeamStats.passingCompletions)/\(stats.awayTeamStats.passingAttempts)"),
+                        ("Yards", "\(stats.awayTeamStats.passingYards)"),
+                        ("Comp %", String(format: "%.1f%%", stats.awayTeamStats.completionPercentage)),
+                        ("TD/INT", "\(stats.awayTeamStats.passingTouchdowns)/\(stats.awayTeamStats.interceptions)"),
+                        ("Sacks", "\(stats.awayTeamStats.sacksAllowed)")
+                    ]
+                )
+                
+                Spacer()
+                
+                statColumn(
+                    title: TeamData.getTeamDisplayName(game.homeTeam.logoName),
+                    stats: [
+                        ("Comp/Att", "\(stats.homeTeamStats.passingCompletions)/\(stats.homeTeamStats.passingAttempts)"),
+                        ("Yards", "\(stats.homeTeamStats.passingYards)"),
+                        ("Comp %", String(format: "%.1f%%", stats.homeTeamStats.completionPercentage)),
+                        ("TD/INT", "\(stats.homeTeamStats.passingTouchdowns)/\(stats.homeTeamStats.interceptions)"),
+                        ("Sacks", "\(stats.homeTeamStats.sacksAllowed)")
+                    ]
+                )
+            }
+        }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+    
+    private func rushingStatsSection(_ stats: DetailedGameStats) -> some View {
+        VStack(spacing: 16) {
+            Text("Rushing Statistics")
+                .font(.headline)
+                .fontWeight(.semibold)
+            
+            HStack {
+                statColumn(
+                    title: TeamData.getTeamDisplayName(game.awayTeam.logoName),
+                    stats: [
+                        ("Attempts", "\(stats.awayTeamStats.rushingAttempts)"),
+                        ("Yards", "\(stats.awayTeamStats.rushingYards)"),
+                        ("Avg", stats.awayTeamStats.rushingAttempts > 0 ? String(format: "%.1f", Double(stats.awayTeamStats.rushingYards) / Double(stats.awayTeamStats.rushingAttempts)) : "0.0"),
+                        ("Touchdowns", "\(stats.awayTeamStats.rushingTouchdowns)"),
+                        ("Fumbles", "\(stats.awayTeamStats.fumbles)")
+                    ]
+                )
+                
+                Spacer()
+                
+                statColumn(
+                    title: TeamData.getTeamDisplayName(game.homeTeam.logoName),
+                    stats: [
+                        ("Attempts", "\(stats.homeTeamStats.rushingAttempts)"),
+                        ("Yards", "\(stats.homeTeamStats.rushingYards)"),
+                        ("Avg", stats.homeTeamStats.rushingAttempts > 0 ? String(format: "%.1f", Double(stats.homeTeamStats.rushingYards) / Double(stats.homeTeamStats.rushingAttempts)) : "0.0"),
+                        ("Touchdowns", "\(stats.homeTeamStats.rushingTouchdowns)"),
+                        ("Fumbles", "\(stats.homeTeamStats.fumbles)")
+                    ]
+                )
+            }
+        }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+    
+    private func efficiencyStatsSection(_ stats: DetailedGameStats) -> some View {
+        VStack(spacing: 16) {
+            Text("Efficiency Statistics")
+                .font(.headline)
+                .fontWeight(.semibold)
+            
+            HStack {
+                statColumn(
+                    title: TeamData.getTeamDisplayName(game.awayTeam.logoName),
+                    stats: [
+                        ("3rd Down", "\(stats.awayTeamStats.thirdDownConversions)/\(stats.awayTeamStats.thirdDownAttempts)"),
+                        ("3rd Down %", String(format: "%.1f%%", stats.awayTeamStats.thirdDownPercentage)),
+                        ("Red Zone", "\(stats.awayTeamStats.redZoneScores)/\(stats.awayTeamStats.redZoneAttempts)"),
+                        ("Red Zone %", String(format: "%.1f%%", stats.awayTeamStats.redZonePercentage)),
+                        ("FG", "\(stats.awayTeamStats.fieldGoalsMade)/\(stats.awayTeamStats.fieldGoalAttempts)")
+                    ]
+                )
+                
+                Spacer()
+                
+                statColumn(
+                    title: TeamData.getTeamDisplayName(game.homeTeam.logoName),
+                    stats: [
+                        ("3rd Down", "\(stats.homeTeamStats.thirdDownConversions)/\(stats.homeTeamStats.thirdDownAttempts)"),
+                        ("3rd Down %", String(format: "%.1f%%", stats.homeTeamStats.thirdDownPercentage)),
+                        ("Red Zone", "\(stats.homeTeamStats.redZoneScores)/\(stats.homeTeamStats.redZoneAttempts)"),
+                        ("Red Zone %", String(format: "%.1f%%", stats.homeTeamStats.redZonePercentage)),
+                        ("FG", "\(stats.homeTeamStats.fieldGoalsMade)/\(stats.homeTeamStats.fieldGoalAttempts)")
+                    ]
+                )
+            }
+        }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+    
+    private func timeOfPossessionSection(_ stats: DetailedGameStats) -> some View {
+        VStack(spacing: 16) {
+            Text("Time of Possession")
+                .font(.headline)
+                .fontWeight(.semibold)
+            
+            HStack(spacing: 40) {
+                VStack(spacing: 8) {
+                    Text(TeamData.getTeamDisplayName(game.awayTeam.logoName))
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    
+                    Text(stats.awayTimeOfPossession)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.blue)
+                }
+                
+                VStack(spacing: 8) {
+                    Text(TeamData.getTeamDisplayName(game.homeTeam.logoName))
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    
+                    Text(stats.homeTimeOfPossession)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.blue)
+                }
+            }
+        }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+    
+    private var scoringPlaysSection: some View {
+        VStack(spacing: 16) {
+            Text("Scoring Plays")
+                .font(.title2)
                 .fontWeight(.bold)
             
             VStack(spacing: 12) {
-                statRow(title: "Total Yards", away: "\(Int.random(in: 250...450))", home: "\(Int.random(in: 250...450))")
-                statRow(title: "Passing Yards", away: "\(Int.random(in: 150...350))", home: "\(Int.random(in: 150...350))")
-                statRow(title: "Rushing Yards", away: "\(Int.random(in: 80...200))", home: "\(Int.random(in: 80...200))")
-                statRow(title: "First Downs", away: "\(Int.random(in: 15...25))", home: "\(Int.random(in: 15...25))")
-                statRow(title: "Turnovers", away: "\(Int.random(in: 0...3))", home: "\(Int.random(in: 0...3))")
-                statRow(title: "Time of Possession", away: "\(Int.random(in: 25...35)):00", home: "\(Int.random(in: 25...35)):00")
+                ForEach(game.scoringPlays) { play in
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Q\(play.quarter) - \(play.time)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            Text(play.team)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                            
+                            Text(play.description)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("+\(play.points)")
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.green)
+                            
+                            Text("\(play.awayScore) - \(play.homeScore)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(12)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                }
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(.secondary.opacity(0.3), lineWidth: 1)
-        )
+        .padding(20)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
     }
     
-    private func statRow(title: String, away: String, home: String) -> some View {
-        HStack {
-            Text(away)
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundColor(.primary)
-                .frame(width: 60, alignment: .leading)
+    private var basicTeamStatsSection: some View {
+        VStack(spacing: 20) {
+            Text("Team Statistics")
+                .font(.title2)
+                .fontWeight(.bold)
             
-            Spacer()
-            
-            Text(title)
+            Text("Basic stats - upgrade to advanced simulation for detailed statistics")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
             
-            Spacer()
-            
-            Text(home)
+            HStack {
+                VStack(spacing: 12) {
+                    Text(TeamData.getTeamDisplayName(game.awayTeam.logoName))
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    
+                    Text("Team Rating: \(game.awayTeam.overallRating)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                VStack(spacing: 12) {
+                    Text(TeamData.getTeamDisplayName(game.homeTeam.logoName))
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    
+                    Text("Team Rating: \(game.homeTeam.overallRating)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(20)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+    }
+    
+    private func statColumn(title: String, stats: [(String, String)]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .foregroundColor(.primary)
-                .frame(width: 60, alignment: .trailing)
+            
+            ForEach(stats, id: \.0) { stat in
+                HStack {
+                    Text(stat.0)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(stat.1)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private func formatGameLength(_ length: TimeInterval) -> String {
+        let hours = Int(length) / 3600
+        let minutes = Int(length) % 3600 / 60
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else {
+            return "\(minutes)m"
         }
     }
 }
@@ -709,7 +962,29 @@ struct GameStatsView: View {
                 primaryColor: "#0B162A",
                 secondaryColor: "#C83803",
                 players: [],
-                overallRating: 78
+                overallRating: 78,
+                coach: Coach(
+                    firstName: "Matt",
+                    lastName: "Eberflus",
+                    overallRating: 78,
+                    offensiveScheme: "West Coast",
+                    defensiveScheme: "4-3 Base",
+                    experience: 8,
+                    offensiveCoordinator: OffensiveCoordinator(
+                        firstName: "Mock",
+                        lastName: "OC",
+                        overallRating: 75,
+                        offensiveScheme: "West Coast",
+                        experience: 5
+                    ),
+                    defensiveCoordinator: DefensiveCoordinator(
+                        firstName: "Mock",
+                        lastName: "DC",
+                        overallRating: 75,
+                        defensiveScheme: "4-3 Base",
+                        experience: 5
+                    )
+                )
             ),
             awayTeam: LeagueTeam(
                 logoName: "Detroit",
@@ -719,7 +994,29 @@ struct GameStatsView: View {
                 primaryColor: "#0076B6",
                 secondaryColor: "#B0B7BC",
                 players: [],
-                overallRating: 82
+                overallRating: 82,
+                coach: Coach(
+                    firstName: "Dan",
+                    lastName: "Campbell",
+                    overallRating: 86,
+                    offensiveScheme: "Pro Style",
+                    defensiveScheme: "3-4 Base",
+                    experience: 5,
+                    offensiveCoordinator: OffensiveCoordinator(
+                        firstName: "Mock",
+                        lastName: "OC",
+                        overallRating: 80,
+                        offensiveScheme: "Pro Style",
+                        experience: 8
+                    ),
+                    defensiveCoordinator: DefensiveCoordinator(
+                        firstName: "Mock",
+                        lastName: "DC",
+                        overallRating: 80,
+                        defensiveScheme: "3-4 Base",
+                        experience: 8
+                    )
+                )
             )
         ),
         onGameCompleted: { _ in }

@@ -9,8 +9,8 @@ struct TeamSelectionView: View {
     @StateObject private var imageCache = ImageCache()
     
     enum Conference: String, CaseIterable {
-        case nfc = "NFC"
-        case afc = "AFC"
+    case nfc = "NCFT"
+    case afc = "ACFT"
         
         var logoName: String {
             switch self {
@@ -52,6 +52,7 @@ struct TeamSelectionView: View {
                             imageCache: imageCache,
                             namespace: teamMorphingNamespace
                         )
+                        .padding(.top, 6)
                         
                         // Continue Button (only show if team is selected)
                         if let selectedTeam = selectedTeam {
@@ -66,7 +67,6 @@ struct TeamSelectionView: View {
                 }
             }
             .background(Color(.systemBackground))
-            .navigationTitle("Choose Conference")
             .navigationBarTitleDisplayMode(.inline)
             .scrollClipDisabled()
         }
@@ -168,17 +168,17 @@ struct EnhancedTeamGridView: View {
         switch conference {
         case .nfc:
             return [
-                NFLDivision(name: "NFC North", teams: ["Chicago", "Detroit", "GreenBay", "Minnesota"]),
-                NFLDivision(name: "NFC East", teams: ["Dallas", "NYN", "Philadelphia", "Washington"]),
-                NFLDivision(name: "NFC South", teams: ["Atlanta", "Carolina", "NewOrleans", "TampaBay"]),
-                NFLDivision(name: "NFC West", teams: ["Arizona", "LAN", "SanFrancisco", "Seattle"])
+                NFLDivision(name: "NCFT North", teams: ["Chicago", "Detroit", "GreenBay", "Minnesota"]),
+                NFLDivision(name: "NCFT East", teams: ["Dallas", "NYN", "Philadelphia", "Washington"]),
+                NFLDivision(name: "NCFT South", teams: ["Atlanta", "Carolina", "NewOrleans", "TampaBay"]),
+                NFLDivision(name: "NCFT West", teams: ["Arizona", "LAN", "SanFrancisco", "Seattle"])
             ]
         case .afc:
             return [
-                NFLDivision(name: "AFC North", teams: ["Baltimore", "Cincinnati", "Cleveland", "Pittsburgh"]),
-                NFLDivision(name: "AFC East", teams: ["Buffalo", "Miami", "NewEngland", "NYA"]),
-                NFLDivision(name: "AFC South", teams: ["Houston", "Indianapolis", "Jacksonville", "Tennessee"]),
-                NFLDivision(name: "AFC West", teams: ["Denver", "KansasCity", "LasVegas", "LAA"])
+                NFLDivision(name: "ACFT North", teams: ["Baltimore", "Cincinnati", "Cleveland", "Pittsburgh"]),
+                NFLDivision(name: "ACFT East", teams: ["Buffalo", "Miami", "NewEngland", "NYA"]),
+                NFLDivision(name: "ACFT South", teams: ["Houston", "Indianapolis", "Jacksonville", "Tennessee"]),
+                NFLDivision(name: "ACFT West", teams: ["Denver", "KansasCity", "LasVegas", "LAA"])
             ]
         }
     }
@@ -338,53 +338,30 @@ struct ContinueButtonContent: View {
     let selectedTeam: String
     
     var body: some View {
-        let teamColors = TeamColorMapping.getColors(for: selectedTeam)
+        let bannerHex = TeamUIResolver.bannerHex(for: selectedTeam)
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
         
-        HStack(spacing: 12) {
-            Image(systemName: "arrow.right.circle.fill")
-                .font(.title2)
-                .foregroundColor(.white)
-                .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
-                .symbolEffect(.bounce, value: selectedTeam)
-            
-            Text("Continue with \(getTeamDisplayName(selectedTeam))")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundColor(.white)
-                .shadow(color: .black.opacity(0.7), radius: 2, x: 0, y: 1)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 18)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(
-                    LinearGradient(
-                        gradient: Gradient(stops: [
-                            .init(color: Color(hex: teamColors.primary), location: 0.0),
-                            .init(color: Color(hex: teamColors.secondary), location: 0.5),
-                            .init(color: Color(hex: teamColors.secondary), location: 1.0)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+        // Light team color glass style (no gradient), white text with strong shadow
+        Text("Continue with \(getTeamDisplayName(selectedTeam))")
+            .font(.title2)
+            .fontWeight(.semibold)
+            .foregroundColor(.white)
+            .shadow(color: .black.opacity(0.7), radius: 2.0, x: 0, y: 1.3)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 20)
+            .padding(.horizontal, 24)
+            .background(alignment: .center) {
+                shape
+                    .fill(Color.clear)
+                    .glassEffect(
+                        .regular.tint(Color(hex: bannerHex)).interactive(),
+                        in: shape
                     )
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(
-                            Color.white.opacity(0.4),
-                            lineWidth: 1.5
-                        )
-                )
-                .shadow(
-                    color: Color(hex: teamColors.primary).opacity(0.4),
-                    radius: 8,
-                    x: 0,
-                    y: 4
-                )
-        )
-        .padding(.horizontal, 30)
-        .hoverEffect(.lift)
-        .sensoryFeedback(.selection, trigger: selectedTeam)
+                    .shadow(color: Color(hex: bannerHex).opacity(0.32), radius: 18, x: 0, y: 12)
+            }
+            .padding(.horizontal, 40)
+            .hoverEffect(.lift)
+            .sensoryFeedback(.selection, trigger: selectedTeam)
     }
     
     private func getTeamDisplayName(_ teamName: String) -> String {
@@ -394,7 +371,7 @@ struct ContinueButtonContent: View {
         case "GreenBay": return "Green Bay"
         case "Minnesota": return "Minnesota"
         case "Dallas": return "Dallas"
-        case "NYN": return "New York N"
+        case "NYN": return "New York"
         case "Philadelphia": return "Philadelphia"
         case "Washington": return "Washington"
         case "Atlanta": return "Atlanta"
@@ -402,7 +379,7 @@ struct ContinueButtonContent: View {
         case "NewOrleans": return "New Orleans"
         case "TampaBay": return "Tampa Bay"
         case "Arizona": return "Arizona"
-        case "LAN": return "Los Angeles N"
+        case "LAN": return "Los Angeles"
         case "SanFrancisco": return "San Francisco"
         case "Seattle": return "Seattle"
         case "Baltimore": return "Baltimore"
@@ -412,7 +389,7 @@ struct ContinueButtonContent: View {
         case "Buffalo": return "Buffalo"
         case "Miami": return "Miami"
         case "NewEngland": return "New England"
-        case "NYA": return "New York A"
+        case "NYA": return "New York"
         case "Houston": return "Houston"
         case "Indianapolis": return "Indianapolis"
         case "Jacksonville": return "Jacksonville"
@@ -420,7 +397,7 @@ struct ContinueButtonContent: View {
         case "Denver": return "Denver"
         case "KansasCity": return "Kansas City"
         case "LasVegas": return "Las Vegas"
-        case "LAA": return "Los Angeles A"
+        case "LAA": return "Los Angeles"
         default: return teamName
         }
     }
